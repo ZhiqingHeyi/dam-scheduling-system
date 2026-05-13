@@ -1,0 +1,346 @@
+{
+  "software_name": "拱坝动态排仓系统",
+  "project_root": "C:\\Users\\1\\Desktop\\智能建造实验室\\拱坝动态规划-智能仓面排序模型\\动态规划系统打包文件\\动态规划系统\\dam-scheduling-system\\backend",
+  "instruction": "本文件只收集证据，不决定行业、功能或手册结构。请由模型阅读这些证据以及必要的项目源码后，另行编写业务理解模型稿。",
+  "documents": [
+    {
+      "path": "requirements.txt",
+      "size": 288,
+      "headings": [],
+      "opening": "fastapi==0.104.1 uvicorn[standard]==0.24.0 python-multipart==0.0.6 pandas==2.1.3 numpy==1.26.2 scipy==1.11.4 openpyxl==3.1.2 sqlalchemy==2.0.23 pymysql==1.1.0 python-jose[cryptography]==3.3.0 python-dotenv==1.0.0 websockets==12.0 aiofiles==23.2.1 pydantic==2.5.2 pydantic-settings==2.1.0"
+    },
+    {
+      "path": "aiware_db/README.md",
+      "size": 8131,
+      "headings": [
+        "AIWARE 数据库模块",
+        "📁 模块结构",
+        "🗄️ 数据库设计",
+        "数据库信息",
+        "表结构",
+        "1. scheduling_runs (排仓运行记录主表)",
+        "2. warehouse_schedules (仓面计划详情表)",
+        "3. monthly_plans (月计划窗口表)",
+        "4. scheduling_weights (权重配置表)",
+        "5. system_configs (系统配置表)",
+        "🚀 快速开始",
+        "1. 初始化数据库",
+        "创建数据库和表",
+        "2. 保存排仓结果",
+        "保存排仓结果",
+        "3. 查询排仓结果",
+        "获取完整排仓结果",
+        "4. 使用仓储层",
+        "查询运行记录",
+        "查询仓面",
+        "获取所有B段仓面",
+        "按日期范围查询",
+        "📡 API 接口",
+        "主要接口"
+      ],
+      "opening": "AIWARE 数据库模块 拱坝智能排仓计划数据存储系统 - 独立于现有 qbt 数据库的新模块 📁 模块结构 🗄️ 数据库设计 数据库信息 - 数据库名 : aiware - 主机 : 192.168.1.88:3306 - 字符集 : utf8mb4 表结构 1. scheduling runs (排仓运行记录主表) 字段 类型 说明 ------ ------ ------ id BIGINT 主键 run id VARCHAR(50) 运行标识 (如: Run 20260427 091850) run name VARCHAR(200) 运行名称 run type ENUM 运行类型 (normal/compress/manual) start date DATE 排仓开始日期 deadline date DATE 工期截止日期 actual end date DATE 实际完成日期 alpha DECIMAL(3,2) AHP权重系数 total warehouses INT 总仓面数 count a/b/c INT A/B/C段数量 status ENUM 运行状态 created at TIMESTAMP 创建时间 2. warehouse schedules (仓面计划详情表) 字段 类型 说明 ------ ------ ------ id BIGINT 主键 run id VARCHAR(50) 关联运行ID warehouse id VARCHAR(50) 仓面编号 (如: 15-23) dam id INT 坝段号 layer id INT 层号 segment ENUM ABC分段 top elevation DECIMAL(10,2) 仓顶高程(m) plan start/end date DATE 计划起止日期 final start/end date DATE 最终排仓起止日期 score DECIMAL(10,6) 综合得分 status ENUM 仓面状态 3. monthly plans (月计划窗口表) 字段 类型 说明 -----"
+    },
+    {
+      "path": "venv/Lib/site-packages/annotated_doc-0.0.4.dist-info/entry_points.txt",
+      "size": 34,
+      "headings": [],
+      "opening": "[console scripts] [gui scripts]"
+    },
+    {
+      "path": "venv/Lib/site-packages/anyio-4.13.0.dist-info/entry_points.txt",
+      "size": 39,
+      "headings": [],
+      "opening": "[pytest11] anyio = anyio.pytest plugin"
+    },
+    {
+      "path": "venv/Lib/site-packages/anyio-4.13.0.dist-info/top_level.txt",
+      "size": 6,
+      "headings": [],
+      "opening": "anyio"
+    },
+    {
+      "path": "venv/Lib/site-packages/ecdsa-0.19.2.dist-info/top_level.txt",
+      "size": 6,
+      "headings": [],
+      "opening": "ecdsa"
+    },
+    {
+      "path": "venv/Lib/site-packages/et_xmlfile-2.0.0.dist-info/AUTHORS.txt",
+      "size": 82,
+      "headings": [],
+      "opening": "The authors in alphabetical order Charlie Clark Daniel Hillier Elias Rabel"
+    },
+    {
+      "path": "venv/Lib/site-packages/et_xmlfile-2.0.0.dist-info/LICENCE.rst",
+      "size": 1131,
+      "headings": [],
+      "opening": "This software is under the MIT Licence ====================================== Copyright (c) 2010 openpyxl Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR"
+    },
+    {
+      "path": "venv/Lib/site-packages/et_xmlfile-2.0.0.dist-info/top_level.txt",
+      "size": 11,
+      "headings": [],
+      "opening": "et xmlfile"
+    },
+    {
+      "path": "venv/Lib/site-packages/fastapi-0.135.3.dist-info/entry_points.txt",
+      "size": 61,
+      "headings": [],
+      "opening": "[console scripts] fastapi = fastapi.cli:main [gui scripts]"
+    },
+    {
+      "path": "venv/Lib/site-packages/greenlet-3.3.2.dist-info/top_level.txt",
+      "size": 9,
+      "headings": [],
+      "opening": "greenlet"
+    },
+    {
+      "path": "venv/Lib/site-packages/h11-0.16.0.dist-info/top_level.txt",
+      "size": 4,
+      "headings": [],
+      "opening": "h11"
+    },
+    {
+      "path": "venv/Lib/site-packages/numpy-2.4.4.dist-info/entry_points.txt",
+      "size": 220,
+      "headings": [],
+      "opening": "[pkg config] numpy = numpy. core.lib.pkgconfig [array api] numpy = numpy [pyinstaller40] hook-dirs = numpy: pyinstaller hooks dir [console scripts] f2py = numpy.f2py.f2py2e:main numpy-config = numpy. configtool:main"
+    },
+    {
+      "path": "venv/Lib/site-packages/openpyxl-3.1.5.dist-info/LICENCE.rst",
+      "size": 1131,
+      "headings": [],
+      "opening": "This software is under the MIT Licence ====================================== Copyright (c) 2010 openpyxl Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR"
+    },
+    {
+      "path": "venv/Lib/site-packages/openpyxl-3.1.5.dist-info/top_level.txt",
+      "size": 9,
+      "headings": [],
+      "opening": "openpyxl"
+    },
+    {
+      "path": "venv/Lib/site-packages/pandas-3.0.2.dist-info/entry_points.txt",
+      "size": 69,
+      "headings": [],
+      "opening": "[pandas plotting backends] matplotlib = pandas:plotting. matplotlib"
+    },
+    {
+      "path": "venv/Lib/site-packages/pip-25.1.1.dist-info/entry_points.txt",
+      "size": 87,
+      "headings": [],
+      "opening": "[console scripts] pip = pip. internal.cli.main:main pip3 = pip. internal.cli.main:main"
+    },
+    {
+      "path": "venv/Lib/site-packages/pip-25.1.1.dist-info/top_level.txt",
+      "size": 4,
+      "headings": [],
+      "opening": "pip"
+    },
+    {
+      "path": "venv/Lib/site-packages/pyasn1-0.6.3.dist-info/top_level.txt",
+      "size": 7,
+      "headings": [],
+      "opening": "pyasn1"
+    },
+    {
+      "path": "venv/Lib/site-packages/pymysql-1.1.2.dist-info/top_level.txt",
+      "size": 8,
+      "headings": [],
+      "opening": "pymysql"
+    },
+    {
+      "path": "venv/Lib/site-packages/python_dateutil-2.9.0.post0.dist-info/top_level.txt",
+      "size": 9,
+      "headings": [],
+      "opening": "dateutil"
+    },
+    {
+      "path": "venv/Lib/site-packages/python_dotenv-1.2.2.dist-info/entry_points.txt",
+      "size": 47,
+      "headings": [],
+      "opening": "[console scripts] dotenv = dotenv. main :cli"
+    },
+    {
+      "path": "venv/Lib/site-packages/python_dotenv-1.2.2.dist-info/top_level.txt",
+      "size": 7,
+      "headings": [],
+      "opening": "dotenv"
+    },
+    {
+      "path": "venv/Lib/site-packages/python_jose-3.5.0.dist-info/top_level.txt",
+      "size": 5,
+      "headings": [],
+      "opening": "jose"
+    },
+    {
+      "path": "venv/Lib/site-packages/rsa-4.9.1.dist-info/entry_points.txt",
+      "size": 201,
+      "headings": [],
+      "opening": "[console scripts] pyrsa-decrypt=rsa.cli:decrypt pyrsa-encrypt=rsa.cli:encrypt pyrsa-keygen=rsa.cli:keygen pyrsa-priv2pub=rsa.util:private to public pyrsa-sign=rsa.cli:sign pyrsa-verify=rsa.cli:verify"
+    },
+    {
+      "path": "venv/Lib/site-packages/scipy-1.17.1.dist-info/LICENSE.txt",
+      "size": 46756,
+      "headings": [],
+      "opening": "Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, T"
+    },
+    {
+      "path": "venv/Lib/site-packages/six-1.17.0.dist-info/top_level.txt",
+      "size": 4,
+      "headings": [],
+      "opening": "six"
+    },
+    {
+      "path": "venv/Lib/site-packages/sqlalchemy-2.0.48.dist-info/top_level.txt",
+      "size": 11,
+      "headings": [],
+      "opening": "sqlalchemy"
+    },
+    {
+      "path": "venv/Lib/site-packages/tzdata-2025.3.dist-info/top_level.txt",
+      "size": 7,
+      "headings": [],
+      "opening": "tzdata"
+    },
+    {
+      "path": "venv/Lib/site-packages/uvicorn-0.42.0.dist-info/entry_points.txt",
+      "size": 46,
+      "headings": [],
+      "opening": "[console scripts] uvicorn = uvicorn.main:main"
+    },
+    {
+      "path": "venv/Lib/site-packages/websockets-16.0.dist-info/entry_points.txt",
+      "size": 51,
+      "headings": [],
+      "opening": "[console scripts] websockets = websockets.cli:main"
+    },
+    {
+      "path": "venv/Lib/site-packages/websockets-16.0.dist-info/top_level.txt",
+      "size": 11,
+      "headings": [],
+      "opening": "websockets"
+    },
+    {
+      "path": "venv/Lib/site-packages/click-8.3.1.dist-info/licenses/LICENSE.txt",
+      "size": 1475,
+      "headings": [],
+      "opening": "Copyright 2014 Pallets Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PAR"
+    },
+    {
+      "path": "venv/Lib/site-packages/colorama-0.4.6.dist-info/licenses/LICENSE.txt",
+      "size": 1491,
+      "headings": [],
+      "opening": "Copyright (c) 2010 Jonathan Hartley All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. Neither the name of the copyright holders, nor those of its contributors may be used to endorse or promote products derived from this software without specific prior written permission. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILIT"
+    },
+    {
+      "path": "venv/Lib/site-packages/h11-0.16.0.dist-info/licenses/LICENSE.txt",
+      "size": 1124,
+      "headings": [],
+      "opening": "The MIT License (MIT) Copyright (c) 2016 Nathaniel J. Smith <njs@pobox.com and other contributors Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIG"
+    },
+    {
+      "path": "venv/Lib/site-packages/idna-3.11.dist-info/licenses/LICENSE.md",
+      "size": 1541,
+      "headings": [],
+      "opening": "BSD 3-Clause License Copyright (c) 2013-2025, Kim Davies and contributors. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LI"
+    },
+    {
+      "path": "venv/Lib/site-packages/numpy-2.4.4.dist-info/licenses/LICENSE.txt",
+      "size": 45831,
+      "headings": [],
+      "opening": "Copyright (c) 2005-2025, NumPy Developers. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. Neither the name of the NumPy Developers nor the names of any contributors may be used to endorse or promote products derived from this software without specific prior written permission. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCH"
+    },
+    {
+      "path": "venv/Lib/site-packages/numpy/ma/API_CHANGES.txt",
+      "size": 3540,
+      "headings": [],
+      "opening": ".. - - rest - - ================================================== API changes in the new masked array implementation ================================================== Masked arrays are subclasses of ndarray --------------------------------------- Contrary to the original implementation, masked arrays are now regular ndarrays:: x = masked array([1,2,3],mask=[0,0,1]) print isinstance(x, numpy.ndarray) True data returns a view of the masked array -------------------------------------------- Masked arrays are composed of a data part and a mask . Accessing the data part will return a regular ndarray or any of its subclass, depending on the initial data:: x = masked array(numpy.matrix([[1,2],[3,4]]),mask=[[0,0],[0,1]]) print x. data [[1 2] [3 4]] print type(x. data) <class 'numpy.matrixlib.defmatrix.matrix' In practice, data is implemented as a property, not as an attribute. Therefore, you c"
+    },
+    {
+      "path": "venv/Lib/site-packages/numpy/ma/README.rst",
+      "size": 10110,
+      "headings": [
+        "maskedarray : False       # True to use external maskedarray module",
+        "instead of numpy.ma; this is a temporary #"
+      ],
+      "opening": "================================== A guide to masked arrays in NumPy ================================== .. Contents:: See http://www.scipy.org/scipy/numpy/wiki/MaskedArray (dead link) for updates of this document. History ------- As a regular user of MaskedArray, I (Pierre G.F. Gerard-Marchant) became increasingly frustrated with the subclassing of masked arrays (even if I can only blame my inexperience). I needed to develop a class of arrays that could store some additional information along with numerical values, while keeping the possibility for missing data (picture storing a series of dates along with measurements, what would later become the TimeSeries Scikit <http://projects.scipy.org/scipy/scikits/wiki/TimeSeries (dead link). I started to implement such a class, but then quickly realized that any additional information disappeared when processing these subarrays (for example, add"
+    },
+    {
+      "path": "venv/Lib/site-packages/numpy/random/LICENSE.md",
+      "size": 3582,
+      "headings": [
+        "NCSA Open Source License",
+        "3-Clause BSD License",
+        "Components"
+      ],
+      "opening": "This software is dual-licensed under the The University of Illinois/NCSA Open Source License (NCSA) and The 3-Clause BSD License NCSA Open Source License Copyright (c) 2019 Kevin Sheppard. All rights reserved. Developed by: Kevin Sheppard (<kevin.sheppard@economics.ox.ac.uk , <kevin.k.sheppard@gmail.com ) http://www.kevinsheppard.com Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal with the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimers. Red"
+    }
+  ],
+  "code_evidence": {
+    "project_name": "backend",
+    "software_name_candidate": "拱坝动态排仓系统",
+    "frameworks": [
+      "FastAPI",
+      "Python"
+    ],
+    "language": "Python",
+    "routes": [
+      "/",
+      "/health",
+      "/api/database/test-connection",
+      "/api/database/config",
+      "/api/database/save-config",
+      "/api/scheduling/run",
+      "/api/scheduling/status",
+      "/api/files/upload",
+      "/api/files/download",
+      "/api/files/output-files",
+      "/api/aiware/sync",
+      "/ws/logs"
+    ],
+    "feature_name_candidates": [
+      "数据库连接管理",
+      "多目标智能排仓",
+      "AHP权重计算",
+      "熵权法客观权重",
+      "前沿选择排序算法",
+      "缆机资源调度",
+      "冬歇期自动处理",
+      "工期压缩算法",
+      "ABC段划分",
+      "WebSocket实时日志"
+    ],
+    "entry_files": [
+      "main.py"
+    ],
+    "page_files": [],
+    "component_files": [],
+    "api_files": [
+      "api/scheduling.py",
+      "api/database.py",
+      "api/files.py",
+      "api/aiware_api.py"
+    ],
+    "run_command_candidates": [
+      "uvicorn main:app --host 0.0.0.0 --port 8000"
+    ],
+    "package": {
+      "name": "dam-scheduling-system",
+      "path": "",
+      "version": "V2.0",
+      "scripts": {},
+      "dependency_names": [
+        "fastapi",
+        "uvicorn",
+        "numpy",
+        "pandas",
+        "scipy",
+        "pymysql",
+        "pydantic-settings",
+        "openpyxl",
+        "websockets"
+      ]
+    }
+  },
+  "external_research_notes": ""
+}

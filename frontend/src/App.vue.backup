@@ -1,0 +1,350 @@
+<template>
+  <div class="app-container">
+    <header class="glass-header">
+      <div class="header-inner">
+        <div class="brand">
+          <div class="logo-wrapper">
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="logo-glow"></div>
+          </div>
+          <h1 class="brand-title">拱坝动态排仓系统</h1>
+          <span class="version-badge">v2.0</span>
+        </div>
+        
+        <nav class="main-nav">
+          <router-link to="/" class="nav-link active">
+            <el-icon><Monitor /></el-icon>
+            控制面板
+          </router-link>
+        </nav>
+        
+        <div class="header-right">
+          <div class="status-pill">
+            <span :class="['pulse-dot', isConnected ? 'online' : 'offline']"></span>
+            <span>{{ isConnected ? '系统在线' : '离线' }}</span>
+          </div>
+          <div class="clock-display">
+            <span class="clock-icon">🕐</span>
+            {{ currentTime }}
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <main class="app-main">
+      <router-view v-slot="{ Component }">
+        <transition name="glass-fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+    </main>
+    
+    <footer class="glass-footer">
+      <p>© 2026 智能建造实验室 · 拱坝施工智能调度平台</p>
+      <div class="footer-line"></div>
+    </footer>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import { Monitor } from '@element-plus/icons-vue'
+
+const isConnected = ref(true)
+const currentTime = ref('')
+
+let timer: number
+
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+onMounted(() => {
+  updateTime()
+  timer = window.setInterval(updateTime, 1000)
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+})
+</script>
+
+<style scoped lang="scss">
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.glass-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: linear-gradient(
+    180deg,
+    rgba(2, 6, 23, 0.95) 0%,
+    rgba(5, 16, 37, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 200, 255, 0.2);
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      var(--primary-cyan),
+      transparent
+    );
+    opacity: 0.5;
+  }
+  
+  .header-inner {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  
+  .logo-wrapper {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .logo-icon {
+      width: 34px;
+      height: 34px;
+      color: var(--primary-cyan);
+      filter: drop-shadow(0 0 12px var(--glow-color));
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+    
+    .logo-glow {
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--glow-color), transparent 70%);
+      opacity: 0.5;
+      animation: glowRotate 8s linear infinite;
+    }
+  }
+  
+  .brand-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: 1px;
+    text-shadow: 0 0 30px rgba(0, 200, 255, 0.4);
+  }
+  
+  .version-badge {
+    padding: 4px 12px;
+    background: linear-gradient(135deg, rgba(0, 128, 255, 0.2), rgba(0, 240, 255, 0.15));
+    border: 1px solid rgba(0, 200, 255, 0.3);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary-cyan);
+    letter-spacing: 0.5px;
+    box-shadow: 0 0 15px rgba(0, 200, 255, 0.2);
+  }
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.9; }
+}
+
+@keyframes glowRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.main-nav {
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background: rgba(0, 150, 255, 0.06);
+    border: 1px solid rgba(0, 200, 255, 0.15);
+    
+    &:hover {
+      color: var(--primary-cyan);
+      background: rgba(0, 200, 255, 0.12);
+      border-color: rgba(0, 240, 255, 0.35);
+      box-shadow: 0 0 20px rgba(0, 200, 255, 0.2);
+      
+      .el-icon { transform: scale(1.1); }
+    }
+    
+    &.active {
+      color: var(--primary-cyan);
+      background: linear-gradient(135deg, 
+        rgba(0, 128, 255, 0.2), 
+        rgba(0, 240, 255, 0.12)
+      );
+      border-color: rgba(0, 200, 255, 0.45);
+      box-shadow: 
+        0 0 25px rgba(0, 200, 255, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      
+      .el-icon { 
+        color: var(--primary-cyan);
+        filter: drop-shadow(0 0 8px var(--glow-color));
+      }
+    }
+    
+    .el-icon { 
+      font-size: 17px; 
+      transition: transform 0.3s ease;
+    }
+  }
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(6, 20, 50, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 200, 255, 0.2);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      
+      &.online {
+        background: var(--success-color);
+        box-shadow: 0 0 12px var(--success-glow), 0 0 4px var(--success-color);
+        animation: pulse 2s ease-in-out infinite;
+      }
+      
+      &.offline {
+        background: var(--danger-color);
+        box-shadow: 0 0 12px var(--danger-glow);
+      }
+    }
+  }
+  
+  .clock-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(6, 20, 50, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 200, 255, 0.18);
+    border-radius: 10px;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+    font-size: 13px;
+    color: var(--primary-cyan);
+    letter-spacing: 1px;
+    
+    .clock-icon {
+      font-size: 14px;
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+}
+
+.app-main {
+  flex: 1;
+  max-width: 1920px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 28px;
+}
+
+.glass-footer {
+  text-align: center;
+  padding: 18px;
+  position: relative;
+  
+  p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  
+  .footer-line {
+    position: absolute;
+    top: 0;
+    left: 15%;
+    right: 15%;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(0, 200, 255, 0.25),
+      transparent
+    );
+  }
+}
+
+.glass-fade-enter-active,
+.glass-fade-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-fade-enter-from {
+  opacity: 0;
+  transform: translateY(15px) scale(0.98);
+  filter: blur(4px);
+}
+
+.glass-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-15px) scale(0.98);
+  filter: blur(4px);
+}
+</style>

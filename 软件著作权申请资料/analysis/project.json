@@ -1,0 +1,32 @@
+{
+  "project_root": "C:\\Users\\1\\Desktop\\智能建造实验室\\拱坝动态规划-智能仓面排序模型\\动态规划系统打包文件\\动态规划系统\\dam-scheduling-system\\backend",
+  "project_name": "backend",
+  "software_name_candidate": "拱坝智能排仓系统",
+  "package": {
+    "name": "dam-scheduling-system",
+    "path": "",
+    "version": "V2.0",
+    "scripts": {},
+    "dependency_names": ["fastapi", "uvicorn", "numpy", "pandas", "scipy", "pymysql", "pydantic-settings", "openpyxl", "websockets"]
+  },
+  "frameworks": ["FastAPI", "Python"],
+  "language": "Python",
+  "source": {
+    "file_count": 17,
+    "line_count": 4500,
+    "extension_counts": {".py": 17},
+    "category_counts": {"entry": 1, "api": 4, "core": 1, "database": 4, "config": 1, "utility": 2, "test": 20, "models": 1},
+    "categorized_files": {
+      "entry": ["main.py"],
+      "api": ["api/scheduling.py", "api/database.py", "api/files.py", "api/aiware_api.py"],
+      "core": ["core/scheduling_algorithm.py"],
+      "database": ["aiware_db/connection.py", "aiware_db/models.py", "aiware_db/repository.py", "aiware_db/sync_service.py"],
+      "config": ["config.py"],
+      "utility": ["fix_dates.py", "import_elevation.py"]
+    }
+  },
+  "routes": ["/", "/health", "/api/database/test-connection", "/api/database/config", "/api/database/save-config", "/api/scheduling/run", "/api/scheduling/status", "/api/files/upload", "/api/files/download", "/api/files/output-files", "/api/aiware/sync", "/ws/logs"],
+  "readme_excerpt": "拱坝动态排仓系统 Web版 v2.0 - 基于原MATLAB系统的完整Web重构。核心功能：数据库连接管理、多目标智能排仓(AHP+熵权法)、前沿驱动排序算法(三级约束漏斗)、缆机资源调度、冬歇期自动处理、工期压缩算法、实时可视化(ECharts)、WebSocket日志、文件管理(Excel/PNG导出)。",
+  "run_command_candidates": ["uvicorn main:app --host 0.0.0.0 --port 8000"],
+  "feature_candidates": ["数据库连接管理", "多目标智能排仓", "AHP权重计算", "熵权法客观权重", "前沿选择排序算法", "缆机资源调度", "冬歇期自动处理", "工期压缩算法", "ABC段划分", "WebSocket实时日志"]
+}

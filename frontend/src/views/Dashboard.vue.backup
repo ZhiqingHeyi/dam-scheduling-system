@@ -1,0 +1,297 @@
+<template>
+  <div class="dashboard-container">
+    <div class="dashboard-grid">
+      <!-- 左侧：数据库连接 + 运行参数 (精简) -->
+      <aside class="left-panel">
+        <DatabaseConfig @config-saved="handleConfigSaved" />
+        <RunParameters 
+          :is-running="isRunning"
+          @start-scheduling="handleStartScheduling" 
+          @refresh-visualization="handleRefreshVisualization"
+        />
+      </aside>
+
+      <!-- 中间：结果摘要 + 计划可视化 (主区域) -->
+      <main class="center-panel">
+        <ResultSummary :result-data="schedulingResult" />
+        <PlanVisualization :viz-data="visualizationData" />
+      </main>
+
+      <!-- 右侧：结果文件 + 运行日志 -->
+      <aside class="right-panel">
+        <FileManagement :output-files="outputFiles" @file-action="handleFileAction" />
+        <RunLog :logs="logs" />
+      </aside>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import DatabaseConfig from '@/components/DatabaseConfig.vue'
+import RunParameters from '@/components/RunParameters.vue'
+import RunLog from '@/components/RunLog.vue'
+import ResultSummary from '@/components/ResultSummary.vue'
+import PlanVisualization from '@/components/PlanVisualization.vue'
+import FileManagement from '@/components/FileManagement.vue'
+import api from '@/utils/api'
+
+const isRunning = ref(false)
+const logs = ref<Array<{level: string, message: string, timestamp: string}>>([])
+const schedulingResult = ref<any>(null)
+const visualizationData = ref<any>(null)
+const outputFiles = ref<any>([])
+
+let ws: WebSocket | null = null
+
+onMounted(() => {
+  connectWebSocket()
+  loadOutputFiles()
+})
+
+onUnmounted(() => {
+  if (ws) ws.close()
+})
+
+const connectWebSocket = () => {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${protocol}//${window.location.host}/ws/logs`
+  
+  ws = new WebSocket(wsUrl)
+  
+  ws.onopen = () => {
+    logs.value.push({
+      level: 'INFO',
+      message: 'WebSocket 连接成功',
+      timestamp: new Date().toLocaleString('zh-CN')
+    })
+  }
+  
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      
+      if (data.type === 'log') {
+        logs.value.push({
+          level: data.level,
+          message: data.message,
+          timestamp: data.timestamp
+        })
+        
+        if (logs.value.length > 200) {
+          logs.value = logs.value.slice(-100)
+        }
+      } else if (data.type === 'progress') {
+        logs.value.push({
+          level: 'PROGRESS',
+          message: `[${data.step}/${data.total}] ${data.status}: ${data.detail}`,
+          timestamp: new Date().toLocaleString('zh-CN')
+        })
+      } else if (data.type === 'result') {
+        schedulingResult.value = data.data
+        visualizationData.value = data.data.visualization_data || data.data.visualizationData
+        isRunning.value = false
+        loadOutputFiles()
+      }
+    } catch (e) {
+      console.error('WebSocket message parse error:', e)
+    }
+  }
+  
+  ws.onerror = () => {
+    logs.value.push({
+      level: 'ERROR',
+      message: 'WebSocket 连接错误',
+      timestamp: new Date().toLocaleString('zh-CN')
+    })
+  }
+  
+  ws.onclose = () => {
+    logs.value.push({
+      level: 'WARNING',
+      message: 'WebSocket 连接已断开',
+      timestamp: new Date().toLocaleString('zh-CN')
+    })
+  }
+}
+
+const handleConfigSaved = async (config: any) => {
+  try {
+    await api.saveDatabaseConfig(config)
+    logs.value.push({
+      level: 'SUCCESS',
+      message: `数据库配置已保存：${config.host}:${config.port} / ${config.database}`,
+      timestamp: new Date().toLocaleString('zh-CN')
+    })
+  } catch (error: any) {
+    logs.value.push({
+      level: 'ERROR',
+      message: `配置保存失败：${error.message}`,
+      timestamp: new Date().toLocaleString('zh-CN')
+    })
+  }
+}
+
+const handleStartScheduling = async (params: any) => {
+  isRunning.value = true
+  schedulingResult.value = null
+  visualizationData.value = null
+  
+  logs.value.push({
+    level: 'INFO',
+    message: '开始执行排仓计算...',
+    timestamp: new Date().toLocaleString('zh-CN')
+  })
+  
+  try {
+    const response = await api.runScheduling(params)
+    
+    schedulingResult.value = response.data
+    visualizationData.value = response.data.visualization_data
+    
+    logs.value.push({
+      level: 'SUCCESS',
+      message: `排仓完成！方案：${response.data.final_mode}，最后完工日期：${response.data.final_end_date}`,
+      timestamp: new Date().toLocaleString('zh-CN')
+    })
+    
+    loadOutputFiles()
+  } catch (error: any) {
+    logs.value.push({
+      level: 'ERROR',
+      message: `排仓失败：${error.response?.data?.detail || error.message}`,
+      timestamp: new Date().toLocaleString('zh-CN')
+    })
+  } finally {
+    isRunning.value = false
+  }
+}
+
+const handleRefreshVisualization = () => {
+  logs.value.push({
+    level: 'INFO',
+    message: '可视化区域已刷新',
+    timestamp: new Date().toLocaleString('zh-CN')
+  })
+}
+
+const handleFileAction = async (action: string, filename: string) => {
+  switch (action) {
+    case 'open-dir':
+      try {
+        const response = await api.files.openOutputDir()
+        logs.value.push({
+          level: 'SUCCESS',
+          message: response.data.message || '已打开输出目录',
+          timestamp: new Date().toLocaleString('zh-CN')
+        })
+      } catch (error: any) {
+        logs.value.push({
+          level: 'ERROR',
+          message: `打开输出目录失败：${error.response?.data?.detail || error.message}`,
+          timestamp: new Date().toLocaleString('zh-CN')
+        })
+      }
+      break
+    case 'download':
+      window.open(`/api/files/download/${filename}`, '_blank')
+      break
+    case 'open':
+      logs.value.push({
+        level: 'INFO',
+        message: `正在打开文件：${filename}`,
+        timestamp: new Date().toLocaleString('zh-CN')
+      })
+      break
+    case 'preview':
+      try {
+        const preview = await api.previewFile(filename)
+        console.log('File preview:', preview)
+      } catch (error) {
+        console.error('Preview error:', error)
+      }
+      break
+  }
+}
+
+const loadOutputFiles = async () => {
+  try {
+    const response = await api.getOutputFiles()
+    outputFiles.value = response.data.runs || []
+  } catch (error) {
+    console.error('Load output files error:', error)
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.dashboard-container {
+  height: calc(100vh - 140px);
+  overflow: hidden;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 360px;
+  gap: 20px;
+  height: 100%;
+  
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding-right: 6px;
+    
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(56,189,248,0.4), rgba(34,211,238,0.3));
+      border-radius: 2px;
+    }
+  }
+  
+  .center-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding: 0 8px;
+    
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(56,189,248,0.4), rgba(34,211,238,0.3));
+      border-radius: 2px;
+    }
+  }
+  
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding-left: 6px;
+    
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(56,189,248,0.4), rgba(34,211,238,0.3));
+      border-radius: 2px;
+    }
+  }
+}
+
+@media (max-width: 1600px) {
+  .dashboard-grid {
+    grid-template-columns: 280px 1fr 320px;
+    gap: 14px;
+  }
+}
+</style>
