@@ -1,0 +1,29 @@
+flowchart TD
+    START([开始高差约束贪心微调]) --> INIT_H[初始化各坝段当前高程 H_dam]
+    INIT_H --> INIT_A[从A段已完仓面提取实际浇筑高程作为初始状态]
+    INIT_A --> CALC_H["计算各仓面坝顶高程: H_i = H_base - 指标值"]
+    CALC_H --> MARK[标记所有仓面为未放置]
+    MARK --> PICK[按排序顺序选取下一个未放置仓面 i]
+    PICK --> TEMP["假设放置: 临时高程 temp_H = H_dam.copy()"]
+    TEMP --> UPDATE_TEMP["temp_H[dam_i] = H_i"]
+    UPDATE_TEMP --> CHECK_ADJ{检查相邻坝段高差约束}
+    CHECK_ADJ -->|"相邻高差 <= 6m"| CHECK_GLOBAL{检查全局高差约束}
+    CHECK_ADJ -->|"相邻高差 > 6m"| FAIL[不满足相邻高差约束]
+    CHECK_GLOBAL -->|"全局高差 <= 12m"| PASS[约束全部满足]
+    CHECK_GLOBAL -->|"全局高差 > 12m"| FAIL
+    PASS --> PLACE[确认放置仓面 i]
+    PLACE --> UPDATE_H["更新高程状态: H_dam = temp_H"]
+    UPDATE_H --> NEXT{还有未放置仓面?}
+    FAIL --> SKIP[跳过仓面 i, 继续尝试下一个]
+    SKIP --> NEXT
+    NEXT -->|是| PICK
+    NEXT -->|否| APPEND[将仍未放置的仓面追加至末尾]
+    APPEND --> OUTPUT([输出: 满足高差约束的最终排序方案])
+
+    style PASS fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style FAIL fill:#FFCDD2,stroke:#C62828,color:#000
+    style PLACE fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style SKIP fill:#FFE0B2,stroke:#E65100,color:#000
+    style CHECK_ADJ fill:#FFF9C4,stroke:#F57F17,color:#000
+    style CHECK_GLOBAL fill:#FFF9C4,stroke:#F57F17,color:#000
+    style OUTPUT fill:#B3E5FC,stroke:#01579B,color:#000

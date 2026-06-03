@@ -1,0 +1,28 @@
+flowchart TD
+    START([开始组合赋权计算]) --> AHP_INPUT[输入: 多位专家AHP判断矩阵]
+    AHP_INPUT --> GEO_MEAN[几何平均法构建群体复合判断矩阵]
+    GEO_MEAN --> FORMULA1["复合矩阵元素 a_ij = (a_ij_k乘积)^(1/K)"]
+    FORMULA1 --> COL_NORM["列归一化: a_ij / sum(a_ij)"]
+    COL_NORM --> ROW_MEAN["行均值计算AHP权重 W_AHP"]
+    ROW_MEAN --> LAMBDA["计算最大特征根: lambda_max = mean(AW/W)"]
+    LAMBDA --> CI["计算一致性指标: CI = (lambda_max - n)/(n - 1)"]
+    CI --> CR["计算一致性比率: CR = CI / RI"]
+    CR --> CR_CHECK{"CR 小于 0.10 ?"}
+    CR_CHECK -->|是| AHP_OK[AHP权重通过一致性检验]
+    CR_CHECK -->|否| AHP_FAIL[要求专家修正判断矩阵]
+    AHP_FAIL --> AHP_INPUT
+    START --> ENTROPY_INPUT[输入: B段仓面指标数据矩阵 X]
+    ENTROPY_INPUT --> PROB["计算概率分布: p_ij = x_ij / sum(x_mj)"]
+    PROB --> ENTROPY["计算信息熵: e_j = -k * sum(p_ij * ln p_ij)"]
+    ENTROPY --> UTILITY["计算信息效用值: d_j = 1 - e_j"]
+    UTILITY --> W_ENTROPY["归一化得到熵权: W_entropy_j = d_j / sum(d_j)"]
+    AHP_OK --> COMBINE
+    W_ENTROPY --> COMBINE["组合赋权: W_c = alpha * W_AHP + (1-alpha) * W_entropy"]
+    COMBINE --> NORMALIZE["归一化: W_c = W_c / sum(W_c)"]
+    NORMALIZE --> OUTPUT([输出: 组合权重向量 W_c])
+
+    style AHP_OK fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style AHP_FAIL fill:#FFCDD2,stroke:#C62828,color:#000
+    style CR_CHECK fill:#FFF9C4,stroke:#F57F17,color:#000
+    style COMBINE fill:#E1BEE7,stroke:#6A1B9A,color:#000
+    style OUTPUT fill:#B3E5FC,stroke:#01579B,color:#000

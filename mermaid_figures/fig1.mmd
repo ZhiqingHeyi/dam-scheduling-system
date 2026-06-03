@@ -1,0 +1,27 @@
+flowchart TD
+    START([开始]) --> S1[S1: 多源数据融合与ABC动态分段]
+    S1 --> S2[S2: AHP-熵权组合赋权模型构建]
+    S2 --> S3[S3: 多指标归一化与综合评分排序]
+    S3 --> S4[S4: 层号约束纠正]
+    S4 --> S5[S5: 高差约束贪心微调排序]
+    S5 --> S6[S6: 缆机资源约束排班]
+    S6 --> S7[S7: 冬歇期自适应调整]
+    S7 --> S8[S8: ABC段完整排程整合与C段冬歇期感知重排]
+    S8 --> DECIDE{是否存在蓄水/完工节点约束?}
+    DECIDE -->|是| S9[S9: 关键路径工期压缩优化]
+    DECIDE -->|否| OUTPUT
+    S9 --> CHECK{约束是否满足?}
+    CHECK -->|是| OUTPUT[输出完整排仓计划]
+    CHECK -->|否| S9
+    OUTPUT --> EXPORT[导出月计划/年计划/可视化数据]
+    EXPORT --> END([结束])
+
+    style S1 fill:#E3F2FD,stroke:#1565C0,color:#000
+    style S2 fill:#E8F5E9,stroke:#2E7D32,color:#000
+    style S3 fill:#FFF3E0,stroke:#E65100,color:#000
+    style S4 fill:#F3E5F5,stroke:#6A1B9A,color:#000
+    style S5 fill:#FFEBEE,stroke:#C62828,color:#000
+    style S6 fill:#E0F7FA,stroke:#00695C,color:#000
+    style S7 fill:#FFF9C4,stroke:#F57F17,color:#000
+    style S8 fill:#F1F8E9,stroke:#33691E,color:#000
+    style S9 fill:#FCE4EC,stroke:#880E4F,color:#000

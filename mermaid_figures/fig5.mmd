@@ -1,0 +1,36 @@
+flowchart TD
+    START([开始缆机资源约束排班]) --> INIT_TABLE[初始化: 每日缆机使用量表, 各坝段最后浇筑日]
+    INIT_TABLE --> FIRST_WH[选取排序中的下一个仓面]
+    FIRST_WH --> EXTRACT[提取仓面信息: 坝段号, 缆机需求量, 参考间歇时间]
+    EXTRACT --> HAS_PREV{该坝段是否有已排仓面?}
+    HAS_PREV -->|否| FIRST_DAY["起始日 start_day = 1"]
+    FIRST_DAY --> FIND_EARLIEST["查找最早可用日: used_crane + crane_need <= max_crane"]
+    FIND_EARLIEST --> SET_DAY
+    HAS_PREV -->|是| GET_LAST["获取最后浇筑日 last_day"]
+    GET_LAST --> CALC_WINDOW["计算允许浇筑窗口 low_day, high_day"]
+    CALC_WINDOW --> CALC_TARGET["计算目标浇筑日: target_day"]
+    CALC_TARGET --> MODE_CHECK{排班模式?}
+    MODE_CHECK -->|压缩模式| FIND_EARLIEST2["查找窗口内最早可用日"]
+    FIND_EARLIEST2 --> SET_DAY
+    MODE_CHECK -->|正常模式| SEARCH_WIN["在窗口内搜索"]
+    SEARCH_WIN --> CRANE_AVAIL{缆机资源可用?}
+    CRANE_AVAIL -->|是| BEST_DAY["选择最接近target_day的可用日"]
+    BEST_DAY --> SET_DAY
+    CRANE_AVAIL -->|否| NEXT_DAY[检查下一个日期]
+    NEXT_DAY --> CRANE_AVAIL
+    SEARCH_WIN --> WIN_EMPTY{窗口内无可用日?}
+    WIN_EMPTY -->|是| SEARCH_OUT["在窗口外向后搜索最早可用日"]
+    SEARCH_OUT --> SET_DAY
+    WIN_EMPTY -->|否| CRANE_AVAIL
+    SET_DAY["确认浇筑日 day"]
+    SET_DAY --> UPDATE["更新缆机使用量和坝段最后浇筑日"]
+    UPDATE --> MORE{还有更多仓面?}
+    MORE -->|是| FIRST_WH
+    MORE -->|否| CONVERT[将天数转换为日历日期]
+    CONVERT --> OUTPUT([输出: 排班结果表])
+
+    style MODE_CHECK fill:#FFF9C4,stroke:#F57F17,color:#000
+    style CRANE_AVAIL fill:#FFF9C4,stroke:#F57F17,color:#000
+    style WIN_EMPTY fill:#FFF9C4,stroke:#F57F17,color:#000
+    style HAS_PREV fill:#FFF9C4,stroke:#F57F17,color:#000
+    style OUTPUT fill:#B3E5FC,stroke:#01579B,color:#000

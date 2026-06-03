@@ -1,0 +1,23 @@
+flowchart TD
+    INPUT([输入: 基准计划数据 + 实际完成数据]) --> MATCH[第一层判定: 仓面编号匹配]
+    MATCH --> A1[匹配成功的仓面 - 划入A段]
+    MATCH --> ELEV[第二层判定: 高程覆盖判定]
+    ELEV --> CHECK_ELEV{"仓顶高程 <= 该坝段实际最大浇筑高程?"}
+    CHECK_ELEV -->|是| A2[划入A段, 补全实际施工时间]
+    CHECK_ELEV -->|否| NOT_A[非A段仓面]
+    A1 --> A_SEG[A段: 已完仓面]
+    A2 --> A_SEG
+    NOT_A --> TIME_CUT[确定截止时间T_cut]
+    TIME_CUT --> B1_FILTER{"计划结束时间 <= T_cut ?"}
+    B1_FILTER -->|是| B1[B1子段: 截止时间前待排仓面]
+    B1_FILTER -->|否| AFTER_T[截止时间之后的仓面]
+    AFTER_T --> SORT_AFTER[按计划结束时间升序排列]
+    SORT_AFTER --> PICK_N[选取前N个仓面]
+    PICK_N --> B2[B2子段: 扩展待排仓面]
+    B1 --> B_SEG["B段 = B1 + B2: 待排仓面"]
+    B2 --> B_SEG
+    B_SEG --> C_FILTER[剩余未划入A段和B段的仓面]
+    C_FILTER --> C_SEG[C段: 远期仓面, 基准计划顺延]
+    A_SEG --> OUTPUT([输出: A段 / B段 / C段 仓面集合])
+    B_SEG --> OUTPUT
+    C_SEG --> OUTPUT

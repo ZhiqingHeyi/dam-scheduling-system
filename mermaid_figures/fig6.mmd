@@ -1,0 +1,21 @@
+flowchart TD
+    START([开始冬歇期自适应调整]) --> SORT_BY_TIME[按施工开始时间升序排列仓面]
+    SORT_BY_TIME --> INIT_PREV["初始化: prev_end = 第一个仓面开始时间 - 1天"]
+    INIT_PREV --> PICK[选取下一个仓面 i]
+    PICK --> CALC_CAND["计算候选开始时间: candidate = max(原始开始时间, prev_end)"]
+    CALC_CAND --> WINTER_CHECK{候选时间是否落入冬歇期?}
+    WINTER_CHECK -->|否| SET_CAND[确认候选开始时间]
+    WINTER_CHECK -->|是| SHIFT["偏移至冬歇期结束后第一个有效施工日"]
+    SHIFT --> SET_SHIFT[确认偏移后开始时间]
+    SET_SHIFT --> CALC_END["计算结束时间 = 开始时间 + 浇筑持续时间"]
+    SET_CAND --> CALC_END
+    CALC_END --> UPDATE_PREV["更新: prev_end = 当前仓面结束时间"]
+    UPDATE_PREV --> MORE{还有更多仓面?}
+    MORE -->|是| PICK
+    MORE -->|否| OUTPUT([输出: 冬歇期调整后的排班表])
+
+    style WINTER_CHECK fill:#FFF9C4,stroke:#F57F17,color:#000
+    style SHIFT fill:#FFCDD2,stroke:#C62828,color:#000
+    style SET_CAND fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style SET_SHIFT fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style OUTPUT fill:#B3E5FC,stroke:#01579B,color:#000

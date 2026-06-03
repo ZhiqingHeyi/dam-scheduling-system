@@ -1,0 +1,46 @@
+flowchart TD
+    START([开始工期压缩优化]) --> INPUT["输入: 排班结果, 蓄水日期, 蓄水高程, 完工日期"]
+    INPUT --> COMPRESS{启用间歇时间压缩?}
+    COMPRESS -->|是| BUILD_DAM_MAP[构建坝段-仓面映射表]
+    BUILD_DAM_MAP --> ITER_DAM[遍历各坝段]
+    ITER_DAM --> ITER_LAYER[遍历相邻层对]
+    ITER_LAYER --> GAP_CHECK{间歇时间在可压缩范围内?}
+    GAP_CHECK -->|是| REDUCE["缩减间歇: new_gap = max(min_gap, gap - step)"]
+    REDUCE --> ADJUST_TIME["调整当前仓面开始时间"]
+    ADJUST_TIME --> NEXT_PAIR[下一层对]
+    GAP_CHECK -->|否| NEXT_PAIR
+    NEXT_PAIR --> MORE_LAYER{还有更多层对?}
+    MORE_LAYER -->|是| ITER_LAYER
+    MORE_LAYER -->|否| MORE_DAM{还有更多坝段?}
+    MORE_DAM -->|是| ITER_DAM
+    MORE_DAM -->|否| RECASCADE1[级联调整后续仓面时间]
+    COMPRESS -->|否| CRITICAL
+    RECASCADE1 --> CRITICAL
+    CRITICAL{启用关键路径优先?}
+    CRITICAL -->|是| IDENTIFY_WATER["识别蓄水关键仓面: TopElev <= 蓄水高程"]
+    IDENTIFY_WATER --> IDENTIFY_COMP["识别完工关键仓面: TopElev > 蓄水高程"]
+    IDENTIFY_WATER --> ADVANCE_WATER[将蓄水关键仓面开始时间尽可能提前]
+    ADVANCE_WATER --> RECASCADE2[级联调整后续仓面时间]
+    RECASCADE2 --> ADVANCE_COMP[将完工关键仓面开始时间尽可能提前]
+    ADVANCE_COMP --> RECASCADE3[级联调整后续仓面时间]
+    IDENTIFY_COMP --> ADVANCE_WATER
+    CRITICAL -->|否| VERIFY
+    RECASCADE3 --> VERIFY[约束校验]
+    VERIFY --> WATER_OK{蓄水约束满足?}
+    WATER_OK -->|是| COMP_OK{完工约束满足?}
+    WATER_OK -->|否| RESULT1["结果: 蓄水约束未满足"]
+    COMP_OK -->|是| RESULT2["结果: 全部约束满足"]
+    COMP_OK -->|否| RESULT3["结果: 完工约束未满足"]
+    RESULT1 --> OUTPUT([输出: 压缩结果与约束校验报告])
+    RESULT2 --> OUTPUT
+    RESULT3 --> OUTPUT
+
+    style GAP_CHECK fill:#FFF9C4,stroke:#F57F17,color:#000
+    style CRITICAL fill:#FFF9C4,stroke:#F57F17,color:#000
+    style COMPRESS fill:#FFF9C4,stroke:#F57F17,color:#000
+    style WATER_OK fill:#FFF9C4,stroke:#F57F17,color:#000
+    style COMP_OK fill:#FFF9C4,stroke:#F57F17,color:#000
+    style RESULT2 fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style RESULT1 fill:#FFCDD2,stroke:#C62828,color:#000
+    style RESULT3 fill:#FFE0B2,stroke:#E65100,color:#000
+    style OUTPUT fill:#B3E5FC,stroke:#01579B,color:#000

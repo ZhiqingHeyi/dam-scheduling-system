@@ -1,0 +1,123 @@
+{
+  "software_name": "拱坝智能排仓系统",
+  "version": "V2.0",
+  "project_root": "C:\\Users\\1\\Desktop\\智能建造实验室\\拱坝动态规划-智能仓面排序模型\\动态规划系统打包文件\\动态规划系统\\dam-scheduling-system\\backend",
+  "file_count": 11,
+  "material_line_count": 4820,
+  "source_line_count": 4798,
+  "selected_source_line_count": 4798,
+  "lines_per_page": 60,
+  "total_pages": 81,
+  "target_pages": 60,
+  "available_candidate_line_count": 2059008,
+  "available_candidate_pages": 34317,
+  "supplement_status": "候选源码可达到前30页/后30页要求",
+  "mode": "front30_back30",
+  "selection_file": "软件著作权申请资料\\草稿\\代码文件选择.json",
+  "outputs": [
+    "代码-前30页.md",
+    "代码-后30页.md"
+  ],
+  "files": [
+    {
+      "path": "aiware_db/connection.py",
+      "source_line_count": 123,
+      "selected_line_start": 1,
+      "selected_line_end": 123,
+      "selected_line_count": 123,
+      "material_line_start": 1,
+      "material_line_end": 125
+    },
+    {
+      "path": "aiware_db/models.py",
+      "source_line_count": 306,
+      "selected_line_start": 1,
+      "selected_line_end": 306,
+      "selected_line_count": 306,
+      "material_line_start": 126,
+      "material_line_end": 433
+    },
+    {
+      "path": "aiware_db/repository.py",
+      "source_line_count": 573,
+      "selected_line_start": 1,
+      "selected_line_end": 573,
+      "selected_line_count": 573,
+      "material_line_start": 434,
+      "material_line_end": 1008
+    },
+    {
+      "path": "aiware_db/sync_service.py",
+      "source_line_count": 396,
+      "selected_line_start": 1,
+      "selected_line_end": 396,
+      "selected_line_count": 396,
+      "material_line_start": 1009,
+      "material_line_end": 1406
+    },
+    {
+      "path": "api/aiware_api.py",
+      "source_line_count": 357,
+      "selected_line_start": 1,
+      "selected_line_end": 357,
+      "selected_line_count": 357,
+      "material_line_start": 1407,
+      "material_line_end": 1765
+    },
+    {
+      "path": "api/database.py",
+      "source_line_count": 493,
+      "selected_line_start": 1,
+      "selected_line_end": 493,
+      "selected_line_count": 493,
+      "material_line_start": 1766,
+      "material_line_end": 2260
+    },
+    {
+      "path": "api/files.py",
+      "source_line_count": 261,
+      "selected_line_start": 1,
+      "selected_line_end": 261,
+      "selected_line_count": 261,
+      "material_line_start": 2261,
+      "material_line_end": 2523
+    },
+    {
+      "path": "api/scheduling.py",
+      "source_line_count": 887,
+      "selected_line_start": 1,
+      "selected_line_end": 887,
+      "selected_line_count": 887,
+      "material_line_start": 2524,
+      "material_line_end": 3412
+    },
+    {
+      "path": "config.py",
+      "source_line_count": 33,
+      "selected_line_start": 1,
+      "selected_line_end": 33,
+      "selected_line_count": 33,
+      "material_line_start": 3413,
+      "material_line_end": 3447
+    },
+    {
+      "path": "core/scheduling_algorithm.py",
+      "source_line_count": 1290,
+      "selected_line_start": 1,
+      "selected_line_end": 1290,
+      "selected_line_count": 1290,
+      "material_line_start": 3448,
+      "material_line_end": 4739
+    },
+    {
+      "path": "main.py",
+      "source_line_count": 79,
+      "selected_line_start": 1,
+      "selected_line_end": 79,
+      "selected_line_count": 79,
+      "material_line_start": 4740,
+      "material_line_end": 4820
+    }
+  ],
+  "safe_software_filename": "拱坝智能排仓系统"
+}

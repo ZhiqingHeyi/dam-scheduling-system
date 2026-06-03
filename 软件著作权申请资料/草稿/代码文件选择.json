@@ -3,7 +3,7 @@
   "selection_required": true,
   "model_selection_required": true,
   "confirmation_required": true,
-  "user_confirmed": false,
+  "user_confirmed": true,
   "target_pages": 60,
   "lines_per_page": 60,
   "target_lines": 3600,
@@ -44973,5 +44973,7 @@
       "evidence": "补充源码证据",
       "model_reason": ""
     }
-  ]
+  ],
+  "confirmation_note": "用户确认11个核心文件选择",
+  "confirmed_at": "2026-05-13T02:31:13+00:00"
 }

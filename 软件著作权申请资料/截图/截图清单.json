@@ -1,0 +1,55 @@
+{
+  "status": "ok",
+  "method": "user-supplied",
+  "screenshots": [
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\01-image1.png",
+      "source": "软件著作权申请资料\\用户截图\\image1.png"
+    },
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\02-image2.png",
+      "source": "软件著作权申请资料\\用户截图\\image2.png"
+    },
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\03-image3.png",
+      "source": "软件著作权申请资料\\用户截图\\image3.png"
+    },
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\04-image4.png",
+      "source": "软件著作权申请资料\\用户截图\\image4.png"
+    },
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\05-image5.png",
+      "source": "软件著作权申请资料\\用户截图\\image5.png"
+    },
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\06-image6.png",
+      "source": "软件著作权申请资料\\用户截图\\image6.png"
+    },
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\07-image7.png",
+      "source": "软件著作权申请资料\\用户截图\\image7.png"
+    },
+    {
+      "route": "",
+      "url": "",
+      "path": "软件著作权申请资料\\截图\\08-image8.png",
+      "source": "软件著作权申请资料\\用户截图\\image8.png"
+    }
+  ],
+  "errors": []
+}

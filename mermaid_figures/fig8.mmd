@@ -1,0 +1,42 @@
+flowchart LR
+    subgraph DAM_VIEW["拱坝仓面排程可视化展示"]
+        direction TB
+        subgraph DAM["坝段横截面视图"]
+            D14["14坝段"]
+            D15["15坝段"]
+            D16["16坝段"]
+            D17["17坝段"]
+            D18["18坝段"]
+        end
+        subgraph LEGEND["图例说明"]
+            L_A["A段: 已完仓面(绿色)"]
+            L_B["B段: 待排仓面(蓝色)"]
+            L_C["C段: 远期仓面(灰色)"]
+        end
+    end
+    subgraph TIMELINE["时间轴甘特图"]
+        direction TB
+        T1["2026/05-2026/08: B段排仓期"]
+        T2["2026/11-2027/04: 冬歇期停工"]
+        T3["2027/04-2028/10: 蓄水节点前施工"]
+        T4["2028/10: 蓄水节点"]
+        T5["2028/10-2030/10: 蓄水后施工"]
+        T6["2030/10: 完工节点"]
+    end
+    subgraph PLAN_OUTPUT["多周期计划输出"]
+        direction TB
+        P1["固定周期月计划(每月26日-次月25日)"]
+        P2["滚动周期月计划(从B段开始日起30天)"]
+        P3["年度计划(自然年度)"]
+    end
+    DAM_VIEW --> TIMELINE
+    TIMELINE --> PLAN_OUTPUT
+
+    style DAM_VIEW fill:#F5F5F5,stroke:#424242,color:#000
+    style TIMELINE fill:#E3F2FD,stroke:#1565C0,color:#000
+    style PLAN_OUTPUT fill:#E8F5E9,stroke:#2E7D32,color:#000
+    style L_A fill:#C8E6C9,stroke:#2E7D32,color:#000
+    style L_B fill:#BBDEFB,stroke:#1565C0,color:#000
+    style L_C fill:#EEEEEE,stroke:#9E9E9E,color:#000
+    style T4 fill:#FFCDD2,stroke:#C62828,color:#000
+    style T6 fill:#FFCDD2,stroke:#C62828,color:#000

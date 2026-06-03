@@ -425,7 +425,19 @@ def normalize_docx_text_color(docx_path: Path) -> None:
                     text = re.sub(r'\s*<Relationship\b[^>]*Type="[^"]*/hyperlink"[^>]*/>', "", text)
                     data = text.encode("utf-8")
             dst.writestr(item, data)
-    tmp_path.replace(docx_path)
+    import time
+    for attempt in range(5):
+        try:
+            if docx_path.exists():
+                docx_path.unlink()
+            tmp_path.rename(docx_path)
+            break
+        except PermissionError:
+            time.sleep(0.5)
+    else:
+        import shutil
+        shutil.copy2(tmp_path, docx_path)
+        tmp_path.unlink()
 
 
 def build_code_docx_ooxml(md_path: Path, out_path: Path, software_name: str, version: str) -> None:
