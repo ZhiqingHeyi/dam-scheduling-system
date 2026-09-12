@@ -171,6 +171,66 @@ def elevation_constraint_sort(sorted_indices: List[int], dam_ids: np.ndarray,
                 if idx_a < len(heights_a) and not np.isnan(heights_a[idx_a]):
                     current_h[k] = heights_a[idx_a]
 
+    # 调试日志：输出A段初始高程和相邻高差
+    import logging
+    logger = logging.getLogger('scheduling')
+    logger.info(f"[高差约束] 坝段列表: {u_dam.tolist()}")
+    logger.info(f"[高差约束] A段初始高程: { {int(u_dam[k]): current_h[k] for k in range(n_dam) if not np.isnan(current_h[k])} }")
+    for k in range(n_dam - 1):
+        if not np.isnan(current_h[k]) and not np.isnan(current_h[k + 1]):
+            diff = abs(current_h[k] - current_h[k + 1])
+            logger.info(f"[高差约束] 相邻坝段 {int(u_dam[k])}-{int(u_dam[k+1])}: 高差={diff:.1f}m, 限制={adj_limit}m, {'违反' if diff > adj_limit else '满足'}")
+    h_init = current_h[~np.isnan(current_h)]
+    if len(h_init) >= 2:
+        logger.info(f"[高差约束] 全局高差: {h_init.max() - h_init.min():.1f}m, 限制={global_limit}m, {'违反' if h_init.max()-h_init.min() > global_limit else '满足'}")
+
+    # 自适应高差约束：检测A段初始高程中已违反约束的相邻坝段对，
+    # 将其约束阈值放宽到实际高差值，避免后续排仓被已违反的约束卡死
+    adaptive_adj_limit = np.full(n_dam, adj_limit)
+    adj_relaxed_count = 0
+    for k in range(n_dam - 1):
+        if not np.isnan(current_h[k]) and not np.isnan(current_h[k + 1]):
+            actual_diff = abs(current_h[k] - current_h[k + 1])
+            if actual_diff > adj_limit:
+                # 该相邻对的约束放宽到实际高差值，允许后续仓位不超过此差距
+                adaptive_adj_limit[k] = max(adaptive_adj_limit[k], actual_diff)
+                adaptive_adj_limit[k + 1] = max(adaptive_adj_limit[k + 1], actual_diff)
+                adj_relaxed_count += 1
+                logger.info(f"[高差约束] 自适应放宽: 坝段{int(u_dam[k])}限制{adj_limit}→{adaptive_adj_limit[k]:.1f}m, 坝段{int(u_dam[k+1])}限制{adj_limit}→{adaptive_adj_limit[k+1]:.1f}m")
+
+    # 自适应全局约束：如果A段初始高程已超过全局限制，放宽到实际范围
+    h_init = current_h[~np.isnan(current_h)]
+    adaptive_global_limit = global_limit
+    if len(h_init) >= 2:
+        actual_global_diff = h_init.max() - h_init.min()
+        if actual_global_diff > global_limit:
+            adaptive_global_limit = actual_global_diff
+            logger.info(f"[高差约束] 自适应放宽全局限制: {global_limit}→{adaptive_global_limit:.1f}m")
+
+    if adj_relaxed_count == 0:
+        logger.info(f"[高差约束] A段初始高程未违反约束，自适应机制未触发")
+    
+    # 调试日志：输出B段仓位高程和约束检查过程
+    forced_count = 0
+
+    # 记录每个坝段已排入的最大层号，确保同坝段内按层号递增浇筑
+    dam_max_layer_placed = {}
+
+    # 构建每个坝段内所有仓位按层号排序的映射，确定每个坝段下一个应该排入的层号
+    dam_next_layer = {}  # {dam_id: next_layer_id_to_place}
+    dam_all_layers = {}  # {dam_id: sorted list of layer_ids}
+    for i in range(n):
+        di = dam_index_row[i]
+        if di >= 0:
+            d_id = int(u_dam[di])
+            if d_id not in dam_all_layers:
+                dam_all_layers[d_id] = set()
+            dam_all_layers[d_id].add(layer_ids[sorted_indices[i]])
+
+    for d_id in dam_all_layers:
+        dam_all_layers[d_id] = sorted(dam_all_layers[d_id])
+        dam_next_layer[d_id] = dam_all_layers[d_id][0]  # 从最小层号开始
+
     used = np.zeros(n, dtype=bool)
     final_order = []
 
@@ -190,6 +250,12 @@ def elevation_constraint_sort(sorted_indices: List[int], dam_ids: np.ndarray,
                 chosen = i
                 break
 
+            # 检查同坝段内层号顺序约束：当前仓位必须是该坝段下一个待排层号
+            d_id = int(u_dam[di])
+            current_layer = layer_ids[sorted_indices[i]]
+            if d_id in dam_next_layer and current_layer != dam_next_layer[d_id]:
+                continue  # 跳过：该仓位不是下一个应排入的层号
+
             temp_h = current_h.copy()
             temp_h[di] = Hi
 
@@ -198,25 +264,43 @@ def elevation_constraint_sort(sorted_indices: List[int], dam_ids: np.ndarray,
             if di - 1 >= 0:
                 Hj = temp_h[di - 1]
                 if not np.isnan(Hj) and not np.isnan(temp_h[di]):
-                    if abs(temp_h[di] - Hj) > adj_limit:
+                    # 使用自适应的相邻高差限制
+                    limit = max(adaptive_adj_limit[di], adaptive_adj_limit[di - 1])
+                    if abs(temp_h[di] - Hj) > limit:
                         ok = False
 
             if ok and di + 1 <= n_dam - 1:
                 Hj = temp_h[di + 1]
                 if not np.isnan(Hj) and not np.isnan(temp_h[di]):
-                    if abs(temp_h[di] - Hj) > adj_limit:
+                    limit = max(adaptive_adj_limit[di], adaptive_adj_limit[di + 1])
+                    if abs(temp_h[di] - Hj) > limit:
                         ok = False
 
             if ok:
                 h_non_na = temp_h[~np.isnan(temp_h)]
                 if len(h_non_na) > 0:
-                    if h_non_na.max() - h_non_na.min() > global_limit:
+                    if h_non_na.max() - h_non_na.min() > adaptive_global_limit:
                         ok = False
 
             if ok:
                 placed = True
                 chosen = i
                 current_h = temp_h
+                # 更新坝段下一个待排层号
+                d_id = int(u_dam[di])
+                current_layer = layer_ids[sorted_indices[i]]
+                if d_id in dam_max_layer_placed and current_layer > dam_max_layer_placed[d_id]:
+                    dam_max_layer_placed[d_id] = current_layer
+                elif d_id not in dam_max_layer_placed:
+                    dam_max_layer_placed[d_id] = current_layer
+                # 推进下一个待排层号
+                if d_id in dam_next_layer:
+                    layers = dam_all_layers[d_id]
+                    idx_in_layers = layers.index(current_layer)
+                    if idx_in_layers + 1 < len(layers):
+                        dam_next_layer[d_id] = layers[idx_in_layers + 1]
+                    else:
+                        del dam_next_layer[d_id]  # 该坝段所有层号已排完
                 break
 
         if not placed:
@@ -225,10 +309,44 @@ def elevation_constraint_sort(sorted_indices: List[int], dam_ids: np.ndarray,
             Hi = H_sorted[chosen]
             if di >= 0 and not np.isnan(Hi):
                 current_h[di] = Hi
+                forced_count += 1
+                # 更新坝段层号记录
+                d_id = int(u_dam[di])
+                current_layer = layer_ids[sorted_indices[chosen]]
+                if d_id not in dam_max_layer_placed or current_layer > dam_max_layer_placed[d_id]:
+                    dam_max_layer_placed[d_id] = current_layer
+                # 推进下一个待排层号
+                if d_id in dam_next_layer:
+                    layers = dam_all_layers[d_id]
+                    idx_in_layers = layers.index(current_layer)
+                    if idx_in_layers + 1 < len(layers):
+                        dam_next_layer[d_id] = layers[idx_in_layers + 1]
+                    else:
+                        del dam_next_layer[d_id]
+                # 强制排入后，动态更新自适应约束阈值
+                # 如果强制排入导致新的高差违反，放宽对应坝段的约束
+                for neighbor_di in [di - 1, di + 1]:
+                    if 0 <= neighbor_di < n_dam and not np.isnan(current_h[neighbor_di]):
+                        actual_diff = abs(current_h[di] - current_h[neighbor_di])
+                        if actual_diff > adaptive_adj_limit[di]:
+                            adaptive_adj_limit[di] = actual_diff
+                            logger.info(f"[高差约束] 动态放宽: 坝段{int(u_dam[di])}限制→{adaptive_adj_limit[di]:.1f}m")
+                        if actual_diff > adaptive_adj_limit[neighbor_di]:
+                            adaptive_adj_limit[neighbor_di] = actual_diff
+                            logger.info(f"[高差约束] 动态放宽: 坝段{int(u_dam[neighbor_di])}限制→{adaptive_adj_limit[neighbor_di]:.1f}m")
+                # 更新全局约束
+                h_now = current_h[~np.isnan(current_h)]
+                if len(h_now) >= 2:
+                    actual_global = h_now.max() - h_now.min()
+                    if actual_global > adaptive_global_limit:
+                        adaptive_global_limit = actual_global
+                        logger.info(f"[高差约束] 动态放宽全局限制→{adaptive_global_limit:.1f}m")
+                logger.warning(f"[高差约束] 强制排入(第{pos+1}步): 坝段{int(u_dam[di]) if di < n_dam else '?'} 高程={Hi:.1f}m")
 
         final_order.append(sorted_indices[chosen])
         used[chosen] = True
 
+    logger.info(f"[高差约束] 排仓完成: 总仓位={n}, 强制排入={forced_count}次")
     return final_order
 
 
@@ -263,7 +381,7 @@ class CraneScheduler:
         n_rows = len(sorted_report)
         day_index = np.zeros(n_rows, dtype=int)
         used_crane = {}
-        dam_last_day = {}
+        dam_last_end_day = {}
 
         crane_col = None
         rest_col = None
@@ -280,6 +398,10 @@ class CraneScheduler:
 
         rest_ref_vec = np.full(n_rows, np.nan)
         gap_new_vec = np.full(n_rows, np.nan)
+
+        # 跟踪每个坝段首次出现的序号，用于让不同坝段第一仓错开开始
+        dam_first_order = {}
+        first_dam_count = 0
 
         for i in range(n_rows):
             wid = str(sorted_report.iloc[i]['WarehouseID'])
@@ -308,21 +430,28 @@ class CraneScheduler:
 
             rest_ref_vec[i] = rest_ref
 
-            if np.isnan(dam_id) or dam_id not in dam_last_day:
-                start_day = 1
+            if np.isnan(dam_id) or dam_id not in dam_last_end_day:
+                # 不同坝段的第一仓按排序顺序错开1天，避免都从同一天开始
+                if not np.isnan(dam_id):
+                    if dam_id not in dam_first_order:
+                        dam_first_order[dam_id] = first_dam_count
+                        first_dam_count += 1
+                    start_day = 1 + dam_first_order[dam_id]
+                else:
+                    start_day = 1
                 day = self._find_earliest_day(used_crane, crane_need, start_day)
                 gap_new_vec[i] = np.nan
             else:
-                last_day = dam_last_day[dam_id]
+                last_end_day = dam_last_end_day[dam_id]
 
                 gap_target = rest_ref
                 if gap_target < self.config.min_gap_days:
                     gap_target = self.config.min_gap_days
                 if gap_target > self.config.max_gap_days:
                     gap_target = self.config.max_gap_days
-                low_day = last_day + self.config.min_gap_days
-                high_day = last_day + self.config.max_gap_days
-                target_day = last_day + gap_target
+                low_day = last_end_day + self.config.min_gap_days
+                high_day = last_end_day + self.config.max_gap_days
+                target_day = last_end_day + gap_target
 
                 if mode == 'compress':
                     day = self._find_earliest_day(used_crane, crane_need, low_day)
@@ -330,14 +459,14 @@ class CraneScheduler:
                     day = self._choose_day_in_window(used_crane, crane_need,
                                                      target_day, low_day, high_day)
 
-                gap_new = day - last_day
+                gap_new = day - last_end_day
                 gap_new_vec[i] = gap_new
 
             day_index[i] = day
             used_crane[day] = used_crane.get(day, 0) + crane_need
 
             if not np.isnan(dam_id):
-                dam_last_day[dam_id] = day
+                dam_last_end_day[dam_id] = day + 1
 
         start_dates = [start_date + timedelta(days=int(d) - 1) for d in day_index]
         end_dates = [d + timedelta(days=1) for d in start_dates]
@@ -391,38 +520,61 @@ class WinterScheduleHandler:
         if len(result) == 0:
             return result
 
-        start_times = pd.to_datetime(result['开始时间'])
-        end_times = pd.to_datetime(result['结束时间'])
+        has_rest_col = '参考间歇时间_天' in result.columns
 
-        sorted_idx = start_times.argsort().values
-        n = len(sorted_idx)
+        warehouse_ids = result['WarehouseID'].astype(str).tolist()
+        dam_groups = {}
+        for i, wid in enumerate(warehouse_ids):
+            parts = wid.split('-')
+            dam_id = parts[0] if len(parts) >= 1 else '0'
+            if dam_id not in dam_groups:
+                dam_groups[dam_id] = []
+            dam_groups[dam_id].append(i)
 
-        new_start_list = [None] * n
-        new_end_list = [None] * n
+        for dam_id, row_indices in dam_groups.items():
+            if len(row_indices) == 0:
+                continue
 
-        prev_end = pd.Timestamp(start_times.iloc[sorted_idx[0]]) - pd.Timedelta(days=1)
+            dam_rows = result.iloc[row_indices].copy()
+            start_times = pd.to_datetime(dam_rows['开始时间'])
+            sorted_local = start_times.argsort().values
 
-        for i in range(n):
-            orig_s = pd.Timestamp(start_times.iloc[sorted_idx[i]])
-            orig_e = pd.Timestamp(end_times.iloc[sorted_idx[i]])
-            dur = orig_e - orig_s
+            prev_end = None
+            for rank in range(len(sorted_local)):
+                local_idx = sorted_local[rank]
+                orig_row = row_indices[local_idx]
 
-            if i == 0:
-                candidate = orig_s
-            else:
-                candidate = max(orig_s, prev_end)
+                orig_s = pd.Timestamp(result.iloc[orig_row]['开始时间'])
+                orig_e = pd.Timestamp(result.iloc[orig_row]['结束时间'])
+                dur = orig_e - orig_s
 
-            candidate = self._shift_out_of_winter(candidate)
+                if rank == 0:
+                    candidate = orig_s
+                else:
+                    if has_rest_col:
+                        rest_val = result.iloc[orig_row]['参考间歇时间_天']
+                        try:
+                            gap = float(rest_val)
+                            if not np.isfinite(gap) or gap <= 0:
+                                gap = self.config.min_gap_days
+                        except (TypeError, ValueError):
+                            gap = self.config.min_gap_days
+                        if gap < self.config.min_gap_days:
+                            gap = self.config.min_gap_days
+                        if gap > self.config.max_gap_days:
+                            gap = self.config.max_gap_days
+                    else:
+                        gap = self.config.min_gap_days
 
-            new_end = candidate + dur
-            new_start_list[i] = candidate
-            new_end_list[i] = new_end
-            prev_end = new_end
+                    earliest_after_gap = prev_end + pd.Timedelta(days=int(round(gap)))
+                    candidate = max(orig_s, earliest_after_gap)
 
-        for i in range(n):
-            idx = sorted_idx[i]
-            result.iloc[idx, result.columns.get_loc('开始时间')] = new_start_list[i]
-            result.iloc[idx, result.columns.get_loc('结束时间')] = new_end_list[i]
+                candidate = self._shift_out_of_winter(candidate)
+
+                new_end = candidate + dur
+                result.iloc[orig_row, result.columns.get_loc('开始时间')] = candidate
+                result.iloc[orig_row, result.columns.get_loc('结束时间')] = new_end
+                prev_end = new_end
 
         return result
 
@@ -627,21 +779,72 @@ def reschedule_c_with_winter(t_all: pd.DataFrame, is_b_mask: pd.Series,
     for batch_day in unique_days:
         batch_offset_days[batch_day] = winter_handler.count_open_days(c_base_start, batch_day)
 
+    # 收集A/B段各坝段末仓时间，用于约束C段首仓不得早于已浇筑末仓+间歇
+    dam_last_end = {}
+    if 'Segment' in t_all.columns:
+        for seg in ['A', 'B']:
+            seg_mask = t_all['Segment'] == seg
+            if seg_mask.any():
+                seg_df = t_all[seg_mask]
+                for _, row in seg_df.iterrows():
+                    d = int(row['DamID']) if not pd.isna(row.get('DamID')) else None
+                    if d is None:
+                        continue
+                    end_t = pd.to_datetime(row['FinalEnd'], errors='coerce')
+                    if pd.isna(end_t):
+                        continue
+                    if d not in dam_last_end or end_t > dam_last_end[d]:
+                        dam_last_end[d] = end_t
+
+    gap_days = max(int(config.min_gap_days), 1)
+
+    from collections import defaultdict
+
     for batch_day in unique_days:
         batch_new_start = winter_handler.add_open_days(new_base_start, batch_offset_days[batch_day])
 
         rows = idx_c[plan_start_c.values == batch_day]
+        rows_list = rows.tolist() if hasattr(rows, 'tolist') else list(rows)
 
-        for r in rows:
-            i_row = r
-            dur_days = (pd.Timestamp(t_all.iloc[i_row]['PlanEnd']).normalize() -
-                        pd.Timestamp(t_all.iloc[i_row]['PlanStart']).normalize()).days
-            if dur_days < 0 or pd.isna(dur_days):
-                dur_days = 0
+        # 按(坝段, 层号)排序，保证同坝段内层号顺序
+        rows_sorted = sorted(
+            rows_list,
+            key=lambda r: (int(t_all.iloc[r]['DamID']) if not pd.isna(t_all.iloc[r]['DamID']) else 0,
+                           int(t_all.iloc[r]['LayerID']) if not pd.isna(t_all.iloc[r]['LayerID']) else 0)
+        )
 
-            t_all.iloc[i_row, t_all.columns.get_loc('FinalStart')] = batch_new_start
-            t_all.iloc[i_row, t_all.columns.get_loc('FinalEnd')] = winter_handler.add_open_days(
-                batch_new_start, dur_days)
+        # 按坝段分组，同坝段仓面串行排程，不同坝段首仓错开1天
+        dam_groups = defaultdict(list)
+        for r in rows_sorted:
+            d = int(t_all.iloc[r]['DamID']) if not pd.isna(t_all.iloc[r]['DamID']) else 0
+            dam_groups[d].append(r)
+
+        dam_offset = 0
+        for dam_id in sorted(dam_groups.keys()):
+            dam_rows = dam_groups[dam_id]
+            current_start = winter_handler.add_open_days(batch_new_start, dam_offset)
+
+            # C段首仓不得早于已浇筑/已排B段末仓 + 间歇
+            if dam_id in dam_last_end:
+                min_start = winter_handler.add_open_days(dam_last_end[dam_id], gap_days)
+                if current_start < min_start:
+                    current_start = min_start
+
+            for r in dam_rows:
+                i_row = r
+                dur_days = (pd.Timestamp(t_all.iloc[i_row]['PlanEnd']).normalize() -
+                            pd.Timestamp(t_all.iloc[i_row]['PlanStart']).normalize()).days
+                if dur_days < 0 or pd.isna(dur_days):
+                    dur_days = 0
+
+                t_all.iloc[i_row, t_all.columns.get_loc('FinalStart')] = current_start
+                current_end = winter_handler.add_open_days(current_start, dur_days)
+                t_all.iloc[i_row, t_all.columns.get_loc('FinalEnd')] = current_end
+
+                # 同坝段下一仓 = 本仓结束 + 间歇
+                current_start = winter_handler.add_open_days(current_end, gap_days)
+
+            dam_offset += 1
 
     return t_all
 
@@ -744,6 +947,10 @@ def get_rolling_window(t_all: pd.DataFrame):
 
 
 def filter_table_by_overlap(t_all: pd.DataFrame, win_start, win_end) -> pd.DataFrame:
+    if t_all is None or len(t_all) == 0:
+        return pd.DataFrame()
+    if 'FinalStart' not in t_all.columns or 'FinalEnd' not in t_all.columns:
+        return pd.DataFrame()
     final_start = pd.to_datetime(t_all['FinalStart'])
     final_end = pd.to_datetime(t_all['FinalEnd'])
 
@@ -795,29 +1002,66 @@ def export_plan_windows(t_all: pd.DataFrame, output_dir: str):
 import os
 
 
+DAM_CREST_ELEV = 990.0  # 大坝坝顶高程
+
+
 def _estimate_elev_for_layer(dam_id: int, layer_id: int, elev_lookup: dict) -> float:
     key = (dam_id, layer_id)
     if key in elev_lookup:
-        return elev_lookup[key]
+        return min(elev_lookup[key], DAM_CREST_ELEV)
     dam_elevs = {lid: elev for (did, lid), elev in elev_lookup.items() if did == dam_id}
     if dam_elevs:
         sorted_layers = sorted(dam_elevs.keys())
         if layer_id <= sorted_layers[0]:
-            return dam_elevs[sorted_layers[0]] - (sorted_layers[0] - layer_id) * 3.0
+            return min(dam_elevs[sorted_layers[0]] - (sorted_layers[0] - layer_id) * 3.0, DAM_CREST_ELEV)
         elif layer_id >= sorted_layers[-1]:
-            return dam_elevs[sorted_layers[-1]] + (layer_id - sorted_layers[-1]) * 3.0
+            return min(dam_elevs[sorted_layers[-1]] + (layer_id - sorted_layers[-1]) * 3.0, DAM_CREST_ELEV)
         else:
             lower = max(l for l in sorted_layers if l < layer_id)
             upper = min(l for l in sorted_layers if l > layer_id)
             t = (layer_id - lower) / (upper - lower)
-            return dam_elevs[lower] + t * (dam_elevs[upper] - dam_elevs[lower])
-    return round(layer_id * 3, 2)
+            return min(dam_elevs[lower] + t * (dam_elevs[upper] - dam_elevs[lower]), DAM_CREST_ELEV)
+    return min(round(layer_id * 3, 2), DAM_CREST_ELEV)
+
+
+def _load_dam_elev_file_lookup() -> dict:
+    """从 DamElevation.xlsx 加载完整的高程查找表作为基础参考"""
+    import os
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        dam_elev_file = os.path.join(base_dir, 'uploads', 'DamElevation.xlsx')
+        if not os.path.exists(dam_elev_file):
+            return {}
+        dam_elev_df = pd.read_excel(dam_elev_file)
+        lookup = {}
+        for _, er in dam_elev_df.iterrows():
+            d = int(er['DamID']) if not pd.isna(er.get('DamID')) else None
+            l = int(er['LayerID']) if not pd.isna(er.get('LayerID')) else None
+            e = float(er['TopElev']) if not pd.isna(er.get('TopElev')) else None
+            if d is not None and l is not None and e is not None:
+                lookup[(d, l)] = float(e)
+        return lookup
+    except Exception:
+        return {}
+
+
+# 全局缓存DamElevation.xlsx的高程查找表（只加载一次）
+_DAM_ELEV_FILE_LOOKUP_CACHE = None
+
+
+def _get_dam_elev_file_lookup() -> dict:
+    global _DAM_ELEV_FILE_LOOKUP_CACHE
+    if _DAM_ELEV_FILE_LOOKUP_CACHE is None:
+        _DAM_ELEV_FILE_LOOKUP_CACHE = _load_dam_elev_file_lookup()
+    return _DAM_ELEV_FILE_LOOKUP_CACHE
 
 
 def _build_elev_lookup_from_df(df: pd.DataFrame) -> dict:
-    lookup = {}
-    if 'TopElev' not in df.columns:
+    # 先用 DamElevation.xlsx 的完整高程数据作为基础
+    lookup = dict(_get_dam_elev_file_lookup())
+    if df is None or len(df) == 0 or 'TopElev' not in df.columns:
         return lookup
+    # 再用传入的df中的真实TopElev覆盖（有实际浇筑记录的高程更准确）
     for _, row in df.iterrows():
         dam_id = int(row['DamID']) if not pd.isna(row.get('DamID')) else None
         layer_id = int(row['LayerID']) if not pd.isna(row.get('LayerID')) else None
@@ -852,20 +1096,24 @@ def build_cross_tab_data(t_all: pd.DataFrame) -> dict:
         dam_df = df[df['DamID'] == dam_id].copy()
         dam_df = dam_df.sort_values('TopElev', ascending=False, na_position='last')
         dam_df = dam_df.sort_values('LayerID', ascending=False, kind='mergesort')
+        total_layers = len(dam_df)
         layers = []
-        for _, row in dam_df.iterrows():
+        for row_idx, (_, row) in enumerate(dam_df.iterrows()):
             elev = row['TopElev']
             if pd.isna(elev):
                 elev = _estimate_elev_for_layer(dam_id, int(row['LayerID']), elev_lookup)
             start_time = row['FinalStart']
             if isinstance(start_time, pd.Timestamp):
                 start_time = start_time.strftime('%Y-%m-%d')
+            # 序号从下往上编号：底层=1，顶层=total_layers
+            order_num = total_layers - row_idx
             layers.append({
                 'elevation': round(float(elev), 2),
                 'layerId': int(row['LayerID']),
                 'segment': str(row['Segment']),
                 'startTime': start_time,
                 'warehouseId': str(row['WarehouseID']),
+                'orderNum': order_num,
             })
         dam_layers[dam_id] = layers
 
@@ -908,7 +1156,8 @@ def build_cross_tab_export(t_all: pd.DataFrame, output_path: str) -> str:
     else:
         df['TopElev'] = np.nan
 
-    df['FinalStart'] = pd.to_datetime(df['FinalEnd'])
+    df['FinalStart'] = pd.to_datetime(df['FinalStart'])
+    df['FinalEnd'] = pd.to_datetime(df['FinalEnd'])
 
     dams = sorted(df['DamID'].unique().tolist())
 
@@ -921,7 +1170,80 @@ def build_cross_tab_export(t_all: pd.DataFrame, output_path: str) -> str:
         dam_df = dam_df.sort_values('LayerID', ascending=False, kind='mergesort')
         dam_data[dam_id] = dam_df
 
-    max_rows = max(len(dam_data[d]) for d in dams) if dams else 0
+    # 按高程对齐：收集所有仓面的TopElev，从高到低排序，每行对应一个高程
+    all_elevations_set = set()
+    for dam_id in dams:
+        dam_df = dam_data[dam_id]
+        for _, row in dam_df.iterrows():
+            elev = row['TopElev']
+            if pd.isna(elev):
+                elev = _estimate_elev_for_layer(dam_id, int(row['LayerID']), elev_lookup)
+            if not pd.isna(elev):
+                all_elevations_set.add(round(float(elev), 2))
+
+    # 从高到低排序（990在第一行，750在最后一行）
+    all_elevs_desc = sorted(all_elevations_set, reverse=True)
+
+    # 3m网格聚类：高程差<3m的仓面归入同一行（解决1.5m层高与3m层高交错导致的空白行）
+    # 每个聚类取该组中的最大高程作为代表高程
+    elev_clusters = []  # 列表 of (代表高程, [高程列表])
+    elev_to_cluster_idx = {}
+    for elev in all_elevs_desc:
+        if elev_clusters and abs(elev_clusters[-1][0] - elev) < 3.0:
+            # 归入当前聚类
+            elev_clusters[-1][1].append(elev)
+            # 代表高程取最大值（因为从高到低遍历，第一个就是最大值）
+            # 不需要更新代表高程，因为已经是从高到低，第一个最大
+        else:
+            # 新起一个聚类
+            elev_clusters.append((elev, [elev]))
+        elev_to_cluster_idx[elev] = len(elev_clusters) - 1
+
+    # sorted_elevations 是聚类后的代表高程列表（从高到低）
+    sorted_elevations = [c[0] for c in elev_clusters]
+
+    # 构建每个坝段在聚类代表高程->仓面信息的映射
+    # 同聚类有多个仓面时（混合层高），保留层号最大的仓面（dam_df按LayerID降序，第一个是层号最大）
+    dam_elev_map = {}
+    for dam_id in dams:
+        dam_df = dam_data[dam_id]
+        rep_elev_to_row = {}
+        for _, row in dam_df.iterrows():
+            elev = row['TopElev']
+            if pd.isna(elev):
+                elev = _estimate_elev_for_layer(dam_id, int(row['LayerID']), elev_lookup)
+            elev = round(float(elev), 2)
+            cluster_idx = elev_to_cluster_idx.get(elev)
+            if cluster_idx is None:
+                continue
+            rep_elev = sorted_elevations[cluster_idx]
+            # 只保留第一个（层号最大），避免冲突覆盖
+            if rep_elev not in rep_elev_to_row:
+                rep_elev_to_row[rep_elev] = row
+        dam_elev_map[dam_id] = rep_elev_to_row
+
+    # 每个坝段从底部数起的序号（底层=1）
+    dam_order_map = {}
+    for dam_id in dams:
+        dam_df = dam_data[dam_id]
+        total_layers = len(dam_df)
+        # dam_df 按TopElev降序、LayerID降序，反转后从底层开始
+        rep_elev_to_order = {}
+        for row_idx, (_, row) in enumerate(dam_df.iterrows()):
+            elev = row['TopElev']
+            if pd.isna(elev):
+                elev = _estimate_elev_for_layer(dam_id, int(row['LayerID']), elev_lookup)
+            elev = round(float(elev), 2)
+            cluster_idx = elev_to_cluster_idx.get(elev)
+            if cluster_idx is None:
+                continue
+            rep_elev = sorted_elevations[cluster_idx]
+            # 只保留层号最大的仓面的序号
+            if rep_elev not in rep_elev_to_order:
+                rep_elev_to_order[rep_elev] = total_layers - row_idx
+        dam_order_map[dam_id] = rep_elev_to_order
+
+    max_rows = len(sorted_elevations)
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -960,15 +1282,18 @@ def build_cross_tab_export(t_all: pd.DataFrame, output_path: str) -> str:
             cell.border = thin_border
 
         dam_df = dam_data[dam_id]
-        for row_idx, (_, row) in enumerate(dam_df.iterrows()):
+        elev_to_row = dam_elev_map.get(dam_id, {})
+        elev_to_order = dam_order_map.get(dam_id, {})
+
+        # 按sorted_elevations顺序填充，每行对应一个聚类代表高程
+        for row_idx, rep_elev in enumerate(sorted_elevations):
             data_row = row_idx + 3
 
-            elev = row['TopElev']
-            if pd.isna(elev):
-                elev = _estimate_elev_for_layer(dam_id, int(row['LayerID']), elev_lookup)
-            elev = round(float(elev), 2)
+            row = elev_to_row.get(rep_elev)
+            if row is None:
+                continue
 
-            order_num = row_idx + 1
+            order_num = elev_to_order.get(rep_elev, 0)
 
             start_time = row['FinalStart']
             if isinstance(start_time, pd.Timestamp):
@@ -978,7 +1303,8 @@ def build_cross_tab_export(t_all: pd.DataFrame, output_path: str) -> str:
 
             segment = str(row['Segment'])
 
-            elev_cell = ws.cell(row=data_row, column=start_col, value=elev)
+            # 显示聚类代表高程（让同行所有坝段高程值一致）
+            elev_cell = ws.cell(row=data_row, column=start_col, value=rep_elev)
             order_cell = ws.cell(row=data_row, column=start_col + 1, value=order_num)
             time_cell = ws.cell(row=data_row, column=start_col + 2, value=start_time)
 
@@ -1119,6 +1445,7 @@ class ScheduleCompressor:
 
         result = schedule_df.copy()
         dam_map = self._build_dam_map(result)
+        has_rest_col = '参考间歇时间_天' in result.columns
 
         for dam_id, layers in dam_map.items():
             for k in range(len(layers)):
@@ -1132,7 +1459,22 @@ class ScheduleCompressor:
                 if k > 0:
                     prev_layer, prev_row = layers[k - 1]
                     prev_end = pd.Timestamp(result.iloc[prev_row]['结束时间'])
-                    min_start = prev_end + pd.Timedelta(days=self.base_config.min_gap_days)
+
+                    gap = self.base_config.min_gap_days
+                    if has_rest_col:
+                        rest_val = result.iloc[row_idx]['参考间歇时间_天']
+                        try:
+                            gap = float(rest_val)
+                            if not np.isfinite(gap) or gap <= 0:
+                                gap = self.base_config.min_gap_days
+                        except (TypeError, ValueError):
+                            gap = self.base_config.min_gap_days
+                        if gap < self.base_config.min_gap_days:
+                            gap = self.base_config.min_gap_days
+                        if gap > self.base_config.max_gap_days:
+                            gap = self.base_config.max_gap_days
+
+                    min_start = prev_end + pd.Timedelta(days=int(round(gap)))
 
                 if min_start is not None and orig_start < min_start:
                     result.iloc[row_idx, result.columns.get_loc('开始时间')] = min_start
@@ -1151,6 +1493,7 @@ class ScheduleCompressor:
         target_elev = self.config.water_storage_elevation
 
         result = schedule_df.copy()
+        has_rest_col = '参考间歇时间_天' in result.columns
 
         water_storage_critical = set()
         completion_critical = set()
@@ -1167,6 +1510,22 @@ class ScheduleCompressor:
 
         if not water_storage_critical and not completion_critical:
             return result
+
+        def _get_gap_for_row(row_idx):
+            if has_rest_col:
+                rest_val = result.iloc[row_idx]['参考间歇时间_天']
+                try:
+                    g = float(rest_val)
+                    if not np.isfinite(g) or g <= 0:
+                        g = self.base_config.min_gap_days
+                except (TypeError, ValueError):
+                    g = self.base_config.min_gap_days
+                if g < self.base_config.min_gap_days:
+                    g = self.base_config.min_gap_days
+                if g > self.base_config.max_gap_days:
+                    g = self.base_config.max_gap_days
+                return g
+            return self.base_config.min_gap_days
 
         warehouse_ids = result['WarehouseID'].astype(str).tolist()
         wid_to_row = {}
@@ -1204,7 +1563,8 @@ class ScheduleCompressor:
                     prev_layer = max(prev_layers)
                     prev_row = dam_layer_map[dam_id][prev_layer]
                     prev_end = pd.Timestamp(result.iloc[prev_row]['结束时间'])
-                    min_start = prev_end + pd.Timedelta(days=self.base_config.min_gap_days)
+                    gap = _get_gap_for_row(ci)
+                    min_start = prev_end + pd.Timedelta(days=int(round(gap)))
 
             if min_start < orig_start:
                 result.iloc[ci, result.columns.get_loc('开始时间')] = min_start
@@ -1248,7 +1608,8 @@ class ScheduleCompressor:
                     prev_layer = max(prev_layers)
                     prev_row = dam_layer_map[dam_id][prev_layer]
                     prev_end = pd.Timestamp(result.iloc[prev_row]['结束时间'])
-                    min_start = prev_end + pd.Timedelta(days=self.base_config.min_gap_days)
+                    gap = _get_gap_for_row(ci)
+                    min_start = prev_end + pd.Timedelta(days=int(round(gap)))
 
             if min_start < orig_start:
                 result.iloc[ci, result.columns.get_loc('开始时间')] = min_start

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     MIN_GAP_DAYS: int = 7
     MAX_GAP_DAYS: int = 20
     MAX_DIFF_DAYS: int = 5
-    N_EXTRA: int = 10
+    N_EXTRA: int = 50
     
     WINTER_START_MONTH: int = 11
     WINTER_START_DAY: int = 1

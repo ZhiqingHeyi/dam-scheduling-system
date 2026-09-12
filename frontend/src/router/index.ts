@@ -16,7 +16,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  document.title = `${to.meta.title || '拱坝动态排仓系统'} - 智能施工调度平台`
+  document.title = `${to.meta.title || 'QBT大坝工程智能排仓系统'} - 智能施工调度平台`
   next()
 })
 

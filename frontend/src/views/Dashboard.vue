@@ -54,7 +54,7 @@
           class="panel-wrapper main-content panel-cursor-glow"
         >
           <div class="cursor-glow-effect"></div>
-          <PlanVisualization :viz-data="visualizationData" />
+          <PlanVisualization :viz-data="visualizationData" :is-running="isRunning" />
         </div>
       </main>
 

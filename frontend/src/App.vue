@@ -22,7 +22,7 @@
             <span class="deco-line-h"></span>
           </div>
           <h1 class="main-title">
-            <span class="title-text">QBT水利枢纽工程智能排仓系统</span>
+            <span class="title-text">QBT大坝工程智能排仓系统</span>
             <span class="title-scan"></span>
           </h1>
           <div class="title-decoration right">

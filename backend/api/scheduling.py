@@ -16,7 +16,8 @@ from core.scheduling_algorithm import (
     build_complete_schedule, build_owner_export_table,
     export_plan_windows, get_fixed_monthly_window, get_next_fixed_monthly_window, get_rolling_window,
     filter_table_by_overlap, reschedule_c_with_winter,
-    build_cross_tab_data, build_cross_tab_export
+    build_cross_tab_data, build_cross_tab_export,
+    _get_dam_elev_file_lookup
 )
 from api.database import sync_data_from_database
 
@@ -638,7 +639,7 @@ def build_visualization_data(t_all: pd.DataFrame, schedule_df: pd.DataFrame,
     schedule_start = pd.Timestamp(t_all['FinalStart'].min())
     schedule_end = pd.Timestamp(t_all['FinalEnd'].max())
 
-    all_poured = t_all[t_all['Segment'] == 'A'].copy() if 'Segment' in t_all.columns else pd.DataFrame()
+    all_poured = t_all[t_all['Segment'] == 'A'].copy() if 'Segment' in t_all.columns else t_all.iloc[0:0].copy()
 
     full_elev_lookup = _build_elev_lookup(t_all)
 
@@ -703,9 +704,11 @@ def _count_by_segment(df: pd.DataFrame) -> dict:
 
 
 def _build_elev_lookup(df: pd.DataFrame) -> dict:
-    lookup = {}
+    # 先用 DamElevation.xlsx 的完整高程数据作为基础
+    lookup = dict(_get_dam_elev_file_lookup())
     if df is None or len(df) == 0 or 'TopElev' not in df.columns:
         return lookup
+    # 再用传入的df中的真实TopElev覆盖
     for _, row in df.iterrows():
         dam_id = int(row['DamID']) if not pd.isna(row.get('DamID')) else None
         layer_id = int(row['LayerID']) if not pd.isna(row.get('LayerID')) else None
@@ -715,23 +718,26 @@ def _build_elev_lookup(df: pd.DataFrame) -> dict:
     return lookup
 
 
+DAM_CREST_ELEV = 990.0  # 大坝坝顶高程
+
+
 def _resolve_top_elev(dam_id: int, layer_id: int, elev_lookup: dict) -> float:
     key = (dam_id, layer_id)
     if key in elev_lookup:
-        return elev_lookup[key]
+        return min(elev_lookup[key], DAM_CREST_ELEV)
     dam_elevs = {lid: elev for (did, lid), elev in elev_lookup.items() if did == dam_id}
     if dam_elevs:
         sorted_layers = sorted(dam_elevs.keys())
         if layer_id <= sorted_layers[0]:
-            return dam_elevs[sorted_layers[0]] - (sorted_layers[0] - layer_id) * 3.0
+            return min(dam_elevs[sorted_layers[0]] - (sorted_layers[0] - layer_id) * 3.0, DAM_CREST_ELEV)
         elif layer_id >= sorted_layers[-1]:
-            return dam_elevs[sorted_layers[-1]] + (layer_id - sorted_layers[-1]) * 3.0
+            return min(dam_elevs[sorted_layers[-1]] + (layer_id - sorted_layers[-1]) * 3.0, DAM_CREST_ELEV)
         else:
             lower = max(l for l in sorted_layers if l < layer_id)
             upper = min(l for l in sorted_layers if l > layer_id)
             t = (layer_id - lower) / (upper - lower)
-            return dam_elevs[lower] + t * (dam_elevs[upper] - dam_elevs[lower])
-    return round(layer_id * 3, 2)
+            return min(dam_elevs[lower] + t * (dam_elevs[upper] - dam_elevs[lower]), DAM_CREST_ELEV)
+    return min(round(layer_id * 3, 2), DAM_CREST_ELEV)
 
 
 LAYER_HEIGHT = 3.0
@@ -819,8 +825,8 @@ def prepare_chart_data_with_poured(window_df: pd.DataFrame, all_poured: pd.DataF
             'damId': dam_id,
             'layerId': layer_id,
             'warehouseId': str(row['WarehouseID']),
-            'startTime': str(row['FinalStart']),
-            'endTime': str(row['FinalEnd']),
+            'startTime': '' if pd.isna(row['FinalStart']) else str(row['FinalStart']),
+            'endTime': '' if pd.isna(row['FinalEnd']) else str(row['FinalEnd']),
             'segment': str(row['Segment']),
             'topElev': round(top_elev, 2),
             'bottomElev': round(bottom_elev, 2),
@@ -838,7 +844,7 @@ def prepare_chart_data_with_poured(window_df: pd.DataFrame, all_poured: pd.DataF
             wh_id = str(row['WarehouseID'])
             if wh_id in window_wh_ids:
                 continue
-            if dam_id not in planned_dams:
+            if dam_id not in all_dams:
                 continue
             top_elev = _resolve_top_elev(dam_id, layer_id, elev_lookup)
             bottom_elev = _compute_bottom_elev(dam_id, layer_id, top_elev, elev_lookup)
@@ -846,8 +852,8 @@ def prepare_chart_data_with_poured(window_df: pd.DataFrame, all_poured: pd.DataF
                 'damId': dam_id,
                 'layerId': layer_id,
                 'warehouseId': wh_id,
-                'startTime': str(row.get('FinalStart', '')),
-                'endTime': str(row.get('FinalEnd', '')),
+                'startTime': '' if pd.isna(row.get('FinalStart', '')) else str(row.get('FinalStart', '')),
+                'endTime': '' if pd.isna(row.get('FinalEnd', '')) else str(row.get('FinalEnd', '')),
                 'segment': 'A',
                 'topElev': round(top_elev, 2),
                 'bottomElev': round(bottom_elev, 2),
