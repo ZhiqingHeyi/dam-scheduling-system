@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "message": "排仓计算完成（展示模式）",
+  "final_mode": "正常模式",
+  "final_end_date": "2030-10-15 00:00:00",
+  "used_compression": false,
+  "debug_info": {
+    "completion_satisfied": true,
+    "water_storage_satisfied": true,
+    "total_warehouses": 142,
+    "original_end_date": "2030-10-15 00:00:00",
+    "saved_days": 0
+  },
+  "schedule_data": [],
+  "sorted_report": []
+}

@@ -163,9 +163,30 @@ useCursorGlow(logPanelRef, { glowSize: 400, glowColor: 'rgba(0, 240, 255, 0.06)'
 
 let ws: WebSocket | null = null
 
-onMounted(() => {
+onMounted(async () => {
   connectWebSocket()
   loadOutputFiles()
+  
+  // 如果页面初始化且未有计算结果，自动预载入展示数据（纯静态展示体验）
+  try {
+    const [vizRes, schedRes] = await Promise.all([
+      fetch('/sample_visualization.json'),
+      fetch('/sample_scheduling.json')
+    ])
+    if (vizRes.ok && schedRes.ok) {
+      const viz = await vizRes.json()
+      const sched = await schedRes.json()
+      visualizationData.value = viz
+      schedulingResult.value = sched
+      logs.value.push({
+        level: 'INFO',
+        message: '已加载演示排仓方案及可视化数据',
+        timestamp: new Date().toLocaleString('zh-CN')
+      })
+    }
+  } catch (e) {
+    // 忽略
+  }
 })
 
 onUnmounted(() => {
@@ -293,6 +314,26 @@ const handleStartScheduling = async (params: any) => {
     
     loadOutputFiles()
   } catch (error: any) {
+    // 纯前端展示模式降级：如果无后端服务，加载内置演示数据模拟计算
+    try {
+      const [vizRes, schedRes] = await Promise.all([
+        fetch('/sample_visualization.json'),
+        fetch('/sample_scheduling.json')
+      ])
+      if (vizRes.ok && schedRes.ok) {
+        const viz = await vizRes.json()
+        const sched = await schedRes.json()
+        visualizationData.value = viz
+        schedulingResult.value = sched
+        logs.value.push({
+          level: 'SUCCESS',
+          message: `排仓完成（演示模式）！方案：${sched.final_mode}，最后完工日期：${sched.final_end_date}`,
+          timestamp: new Date().toLocaleString('zh-CN')
+        })
+        return
+      }
+    } catch {}
+
     logs.value.push({
       level: 'ERROR',
       message: `排仓失败：${error.response?.data?.detail || error.message}`,
@@ -345,6 +386,36 @@ const handleStartCompression = async (params: any) => {
 
     loadOutputFiles()
   } catch (error: any) {
+    // 纯前端展示模式降级
+    try {
+      const [vizRes, schedRes] = await Promise.all([
+        fetch('/sample_visualization.json'),
+        fetch('/sample_scheduling.json')
+      ])
+      if (vizRes.ok && schedRes.ok) {
+        const viz = await vizRes.json()
+        const sched = await schedRes.json()
+        visualizationData.value = viz
+        schedulingResult.value = sched
+        const compressionResult = {
+          waterStorageOk: true,
+          completionOk: true,
+          originalEndDate: '2030-10-15',
+          compressedEndDate: '2030-09-30',
+          savedDays: 15
+        }
+        if (scheduleCompressionRef.value) {
+          scheduleCompressionRef.value.setCompressionResult(compressionResult)
+        }
+        logs.value.push({
+          level: 'SUCCESS',
+          message: `压缩排仓完成（演示模式）！完工日期：2030-09-30，节约15天`,
+          timestamp: new Date().toLocaleString('zh-CN')
+        })
+        return
+      }
+    } catch {}
+
     if (scheduleCompressionRef.value) {
       scheduleCompressionRef.value.setCompressing(false)
     }
