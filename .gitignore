@@ -71,6 +71,11 @@ Thumbs.db
 # Large data files
 *.xlsx
 *.xls
+!backend/uploads/BaselineSchedule.xlsx
+!backend/uploads/ActualDone.xlsx
+!backend/uploads/WarehouseData_filled.xlsx
+!backend/uploads/AHPScores.xlsx
+!backend/uploads/DamElevation.xlsx
 !backend/data/templates/*.xlsx
 *.csv
 !backend/data/templates/*.csv

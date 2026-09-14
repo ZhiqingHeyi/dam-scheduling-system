@@ -218,19 +218,12 @@ const connectWebSocket = () => {
   }
   
   ws.onerror = () => {
-    logs.value.push({
-      level: 'ERROR',
-      message: 'WebSocket 连接错误',
-      timestamp: new Date().toLocaleString('zh-CN')
-    })
+    // 部署到无 WebSocket 环境（如 Vercel）时静默处理
+    console.warn('WebSocket 未能建立连接，系统将通过 HTTP 接口执行排仓')
   }
   
   ws.onclose = () => {
-    logs.value.push({
-      level: 'WARNING',
-      message: 'WebSocket 连接已断开',
-      timestamp: new Date().toLocaleString('zh-CN')
-    })
+    console.warn('WebSocket 连接已关闭')
   }
 }
 
