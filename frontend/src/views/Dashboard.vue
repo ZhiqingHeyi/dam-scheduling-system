@@ -321,15 +321,29 @@ const handleStartScheduling = async (params: any) => {
         fetch('/sample_scheduling.json')
       ])
       if (vizRes.ok && schedRes.ok) {
+        // 模拟真实排仓的分阶段计算过程，避免瞬间完成
+        const pushLog = (level: string, message: string) => {
+          logs.value.push({ level, message, timestamp: new Date().toLocaleString('zh-CN') })
+        }
+        const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
         const viz = await vizRes.json()
         const sched = await schedRes.json()
+
+        pushLog('INFO', '正在读取大坝实际浇筑进度数据（A 段 35 个仓面）...')
+        await delay(600)
+        pushLog('INFO', '正在加载计划仓面数据，进行高差约束校验...')
+        await delay(700)
+        pushLog('INFO', '计算 AHP-熵权法综合权重...')
+        await delay(600)
+        pushLog('INFO', '执行动态规划排仓求解...')
+        await delay(900)
+        pushLog('INFO', '生成固定周期 / 下月度 / 滚动三十天三套计划...')
+        await delay(700)
+
         visualizationData.value = viz
         schedulingResult.value = sched
-        logs.value.push({
-          level: 'SUCCESS',
-          message: `排仓完成（演示模式）！方案：${sched.final_mode}，最后完工日期：${sched.final_end_date}`,
-          timestamp: new Date().toLocaleString('zh-CN')
-        })
+        pushLog('SUCCESS', `排仓完成（演示模式）！方案：${sched.final_mode}，最后完工日期：${sched.final_end_date}`)
+        loadOutputFiles()
         return
       }
     } catch {}
