@@ -45,6 +45,21 @@ def safe_date(x):
     return s
 
 
+def sanitize(obj):
+    """将 NaN/Inf 等 JSON 非法值统一转为可序列化的值，确保输出为合法 JSON。"""
+    if isinstance(obj, dict):
+        return {k: sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [sanitize(v) for v in obj]
+    if isinstance(obj, float):
+        if pd.isna(obj):
+            return None
+        import math
+        if math.isinf(obj):
+            return None
+    return obj
+
+
 def main():
     # ---------- 1. B段：完整排仓计划（1767仓面，35坝段） ----------
     plan = pd.read_excel(os.path.join(OUTPUT_DIR, '完整排仓计划.xlsx'))
@@ -52,7 +67,10 @@ def main():
     for _, r in plan.iterrows():
         dam = int(r['坝段号'])
         layer = int(r['仓号'])
-        top = float(r['仓顶高程(m)'])
+        top_raw = to_float(norm(r.get('仓顶高程(m)')))
+        if top_raw is None:
+            top_raw = 750.0 + layer * 3.0
+        top = float(top_raw)
         b_warehouses.append({
             'warehouseId': f'{dam}-{layer}',
             'damId': dam,
@@ -148,7 +166,7 @@ def main():
     # ---------- 4. 写入 sample_visualization.json ----------
     viz_path = os.path.join(BASE_DIR, '..', 'frontend', 'public', 'sample_visualization.json')
     with open(viz_path, 'w', encoding='utf-8') as f:
-        json.dump(visualization_data, f, ensure_ascii=False, indent=1, default=str)
+        json.dump(sanitize(visualization_data), f, ensure_ascii=False, indent=1, allow_nan=False)
     print('WROTE:', viz_path, 'size:', os.path.getsize(viz_path) // 1024, 'KB')
 
     # ---------- 5. 写入 sample_scheduling.json（含 visualization_data） ----------
@@ -179,7 +197,7 @@ def main():
 
     sched_path = os.path.join(BASE_DIR, '..', 'frontend', 'public', 'sample_scheduling.json')
     with open(sched_path, 'w', encoding='utf-8') as f:
-        json.dump(output, f, ensure_ascii=False, indent=1, default=str)
+        json.dump(sanitize(output), f, ensure_ascii=False, indent=1, allow_nan=False)
     print('WROTE:', sched_path, 'size:', os.path.getsize(sched_path) // 1024, 'KB')
 
 

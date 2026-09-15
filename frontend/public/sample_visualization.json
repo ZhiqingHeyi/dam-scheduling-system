@@ -16164,8 +16164,8 @@
     "warehouseId": "6-38",
     "damId": 6,
     "layerId": 38,
-    "bottomElev": NaN,
-    "topElev": NaN,
+    "bottomElev": 861.0,
+    "topElev": 864.0,
     "segment": "B",
     "startTime": "2031-07-23"
    },
@@ -32431,8 +32431,8 @@
     "warehouseId": "6-38",
     "damId": 6,
     "layerId": 38,
-    "bottomElev": NaN,
-    "topElev": NaN,
+    "bottomElev": 861.0,
+    "topElev": 864.0,
     "segment": "B",
     "startTime": "2031-07-23"
    },
@@ -48698,8 +48698,8 @@
     "warehouseId": "6-38",
     "damId": 6,
     "layerId": 38,
-    "bottomElev": NaN,
-    "topElev": NaN,
+    "bottomElev": 861.0,
+    "topElev": 864.0,
     "segment": "B",
     "startTime": "2031-07-23"
    },
