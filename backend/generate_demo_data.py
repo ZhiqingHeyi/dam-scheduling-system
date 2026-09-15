@@ -185,7 +185,7 @@ def main():
 
 
     def build_window(b_list, win_start, win_end):
-        """窗口 = 该窗口内重叠的计划B段仓面 + 这些坝段的已浇筑A段背景（.复刻 prepare_chart_data_with_poured）。"""
+        """窗口 = 该窗口内重叠的计划B段仓面 + 全部已浇筑A段背景（.复刻 prepare_chart_data_with_poured）。"""
         win_start = pd.Timestamp(win_start)
         win_end = pd.Timestamp(win_end)
 
@@ -201,27 +201,31 @@ def main():
             w['displayOrder'] = i + 1
 
         win_ids = {w['warehouseId'] for w in in_win}
-        win_dams = {w['damId'] for w in in_win}
+        planned_dams = {w['damId'] for w in in_win}
+        poured_dams = {w['damId'] for w in all_a}
+        all_dams = sorted(planned_dams | poured_dams)
 
-        # 已浇筑A段背景（仅窗口涉及坝段，且避免与计划仓面重复）
+        # 已浇筑A段背景：凡 damId 在 all_dams 且不在窗口计划内均保留（完整大坝下半部分）
         poured = []
         for w in all_a:
-            if w['damId'] in win_dams and w['warehouseId'] not in win_ids:
-                poured.append({**w, 'displayOrder': 0})
+            if w['warehouseId'] in win_ids:
+                continue
+            if w['damId'] not in all_dams:
+                continue
+            poured.append({**w, 'displayOrder': 0})
         poured.sort(key=lambda w: w['damId'])
 
         w_list = poured + in_win
         seg = {'A': 0, 'B': 0, 'C': 0}
         for w in w_list:
             seg[w['segment']] = seg.get(w['segment'], 0) + 1
-        dams = sorted(win_dams | {w['damId'] for w in poured})
 
         return {
             'windowStart': str(win_start.date()),
             'windowEnd': str(win_end.date()),
             'totalCount': len(in_win),
             'segmentCounts': seg,
-            'dams': dams,
+            'dams': all_dams,
             'warehouses': w_list,
         }
 

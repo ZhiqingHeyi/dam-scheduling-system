@@ -547,7 +547,23 @@ const loadOutputFiles = async () => {
     const response = await api.getOutputFiles()
     outputFiles.value = response.data.runs || []
   } catch (error) {
-    console.error('Load output files error:', error)
+    // 演示模式：无后端时展示上一次排仓的成果文件
+    console.warn('Load output files error, fallback to demo files:', error)
+    outputFiles.value = [
+      {
+        id: 'demo-run-1',
+        run_id: 'demo-run-1',
+        created_at: '2026-09-15 10:16:15',
+        mode: '固定周期',
+        files: [
+          { name: '完整排仓计划.xlsx', size: '256 KB', type: 'xlsx' },
+          { name: '月计划_固定周期_2026.08.26-2026.09.25.xlsx', size: '48 KB', type: 'xlsx' },
+          { name: '月计划_下月度_2026.09.26-2026.10.26.xlsx', size: '96 KB', type: 'xlsx' },
+          { name: '滚动计划_三十天_2026.09.15-2026.10.14.xlsx', size: '104 KB', type: 'xlsx' },
+          { name: '可视化数据.json', size: '128 KB', type: 'json' }
+        ]
+      }
+    ]
   }
 }
 </script>
