@@ -60,6 +60,59 @@ def sanitize(obj):
     return obj
 
 
+# ---------------- 复刻后端真实窗口逻辑 ----------------
+
+def get_fixed_monthly_window(ref_date=None):
+    """固定周期窗口：按月 26 日~次月 25 日分界，与后端 scheduling_algorithm 保持一致。"""
+    if ref_date is not None:
+        today = pd.Timestamp(ref_date)
+    else:
+        today = pd.Timestamp.now()
+    d = today.day
+    y = today.year
+    m = today.month
+
+    if d >= 26:
+        win_start = today.replace(day=26)
+        win_end = (win_start + pd.DateOffset(months=1)).replace(day=25)
+    else:
+        this_month_start = today.replace(day=1)
+        prev_month = this_month_start - pd.DateOffset(months=1)
+        win_start = prev_month.replace(day=26)
+        win_end = today.replace(day=25)
+
+    return win_start, win_end
+
+
+def get_next_fixed_monthly_window(ref_date=None):
+    current_start, current_end = get_fixed_monthly_window(ref_date)
+    next_start = current_end + pd.Timedelta(days=1)
+    next_end = next_start + (current_end - current_start)
+    return next_start, next_end
+
+
+def get_rolling_window(b_start: pd.Timestamp):
+    """滚动周期窗口：B 段最早开始日起，到下个月同日的前一天。"""
+    rolling_start = pd.Timestamp(b_start).normalize()
+    y, m, d = rolling_start.year, rolling_start.month, rolling_start.day
+
+    next_y, next_m = y, m + 1
+    if next_m > 12:
+        next_m = 1
+        next_y = y + 1
+
+    import calendar
+    last_day_next_month = calendar.monthrange(next_y, next_m)[1]
+    same_day_next_month = min(d, last_day_next_month)
+    next_month_same_day = pd.Timestamp(year=next_y, month=next_m, day=same_day_next_month)
+    rolling_end = (next_month_same_day - pd.Timedelta(days=1)).normalize()
+    return rolling_start, rolling_end
+
+
+def overlap(win_start, win_end):
+    return lambda s, e: (s and pd.Timestamp(s) <= win_end and e and pd.Timestamp(e) >= win_start)
+
+
 def main():
     # ---------- 1. B段：完整排仓计划（1767仓面，35坝段） ----------
     plan = pd.read_excel(os.path.join(OUTPUT_DIR, '完整排仓计划.xlsx'))
@@ -79,6 +132,7 @@ def main():
             'topElev': top,
             'segment': 'B',
             'startTime': safe_date(r['新排仓开始时间']) or safe_date(r['计划开始时间']),
+            'endTime': safe_date(r['新排仓结束时间']) or safe_date(r['计划结束时间']),
         })
 
     # ---------- 2. A段：已浇筑（ActualDone） ----------
@@ -115,47 +169,83 @@ def main():
     # ---------- 3. 排序 B段（按开始时间） ----------
     b_sorted = sorted(b_warehouses, key=lambda w: w['startTime'] or '9999')
     n = len(b_sorted)
-
     all_a = sorted(a_warehouses, key=lambda w: w['damId'])
 
-    def make_window(b_list, label):
-        w_list = all_a + b_list
-        start_times = [w['startTime'] for w in w_list if w['startTime']]
-        start_times.sort()
-        window_start = start_times[0] if start_times else None
-        window_end = start_times[-1] if start_times else None
+    # ---------- 3.1 按真实后端逻辑划分三个时间窗口 ----------
+    now = pd.Timestamp.now()
+    fixed_window = get_fixed_monthly_window(now)
+    next_window = get_next_fixed_monthly_window(now)
+    b_first_start = pd.Timestamp(min((w['startTime'] for w in b_sorted if w['startTime']))).normalize()
+    rolling_window = get_rolling_window(b_first_start)
+
+    print('窗口划分:')
+    print('  固定周期:', fixed_window[0].date(), '-', fixed_window[1].date())
+    print('  下月度:  ', next_window[0].date(), '-', next_window[1].date())
+    print('  滚动周期:', rolling_window[0].date(), '-', rolling_window[1].date())
+
+
+    def build_window(b_list, win_start, win_end):
+        """窗口 = 该窗口内重叠的计划B段仓面 + 这些坝段的已浇筑A段背景（.复刻 prepare_chart_data_with_poured）。"""
+        win_start = pd.Timestamp(win_start)
+        win_end = pd.Timestamp(win_end)
+
+        # 窗口内计划仓面（按 FinalStart~FinalEnd 与窗口有重叠）
+        in_win = [
+            w for w in b_list
+            if w['startTime'] and w['endTime']
+            and pd.Timestamp(w['startTime']) <= win_end
+            and pd.Timestamp(w['endTime']) >= win_start
+        ]
+        in_win = sorted(in_win, key=lambda w: (pd.Timestamp(w['startTime']) if w['startTime'] else pd.Timestamp.max))
+        for i, w in enumerate(in_win):
+            w['displayOrder'] = i + 1
+
+        win_ids = {w['warehouseId'] for w in in_win}
+        win_dams = {w['damId'] for w in in_win}
+
+        # 已浇筑A段背景（仅窗口涉及坝段，且避免与计划仓面重复）
+        poured = []
+        for w in all_a:
+            if w['damId'] in win_dams and w['warehouseId'] not in win_ids:
+                poured.append({**w, 'displayOrder': 0})
+        poured.sort(key=lambda w: w['damId'])
+
+        w_list = poured + in_win
         seg = {'A': 0, 'B': 0, 'C': 0}
         for w in w_list:
-            s = w['segment']
-            seg[s] = seg.get(s, 0) + 1
-        dams = sorted(set(w['damId'] for w in w_list))
+            seg[w['segment']] = seg.get(w['segment'], 0) + 1
+        dams = sorted(win_dams | {w['damId'] for w in poured})
+
         return {
-            'windowStart': window_start,
-            'windowEnd': window_end,
-            'totalCount': len(w_list),
+            'windowStart': str(win_start.date()),
+            'windowEnd': str(win_end.date()),
+            'totalCount': len(in_win),
             'segmentCounts': seg,
             'dams': dams,
             'warehouses': w_list,
-            '_label': label,
         }
 
-    # 三个窗口均展示完整大坝（全部仓面），保证每个 tab 都能看到完整坝体
-    fixed_win = make_window(b_sorted, '全部')
-    next_win = make_window(b_sorted, '全部')
-    rolling_win = make_window(b_sorted, '全部')
+
+    fixed_win = build_window(b_sorted, *fixed_window)
+    next_win = build_window(b_sorted, *next_window)
+    rolling_win = build_window(b_sorted, *rolling_window)
 
     dams_all = sorted(set(w['damId'] for w in (all_a + b_warehouses)))
     print('坝段数:', len(dams_all), '范围:', dams_all[0], '-', dams_all[-1])
+    print('固定周期计划仓面:', fixed_win['totalCount'], ' 下月度:', next_win['totalCount'], ' 滚动:', rolling_win['totalCount'])
 
     visualization_data = {
         'available': True,
         'finalMode': '正常模式',
-        'scheduleStart': fixed_win['windowStart'],
-        'scheduleEnd': rolling_win['windowEnd'],
-        'fixedWindow': {k: v for k, v in fixed_win.items() if k != '_label'},
-        'nextMonthWindow': {k: v for k, v in next_win.items() if k != '_label'},
-        'rollingWindow': {k: v for k, v in rolling_win.items() if k != '_label'},
+        'scheduleStart': str(pd.Timestamp(min(w['startTime'] for w in b_sorted if w['startTime'])).date()),
+        'scheduleEnd': str(pd.Timestamp(max(w['startTime'] for w in b_sorted if w['startTime'])).date()),
+        'fixedWindow': fixed_win,
+        'nextMonthWindow': next_win,
+        'rollingWindow': rolling_win,
         'consistencyCheck': {
+            'fixedWindowRange': f"{fixed_window[0].strftime('%Y%m%d')}-{fixed_window[1].strftime('%Y%m%d')}",
+            'nextMonthWindowRange': f"{next_window[0].strftime('%Y%m%d')}-{next_window[1].strftime('%Y%m%d')}",
+            'rollingWindowRange': f"{rolling_window[0].strftime('%Y%m%d')}-{rolling_window[1].strftime('%Y%m%d')}",
             'fixedCount': fixed_win['totalCount'],
             'nextMonthCount': next_win['totalCount'],
             'rollingCount': rolling_win['totalCount'],
@@ -170,14 +260,14 @@ def main():
     print('WROTE:', viz_path, 'size:', os.path.getsize(viz_path) // 1024, 'KB')
 
     # ---------- 5. 写入 sample_scheduling.json（含 visualization_data） ----------
-    last_end = sorted([w['startTime'] for w in b_warehouses if w['startTime']])
-    final_end = last_end[-1] if last_end else None
+    end_times = [w['endTime'] for w in b_warehouses if w['endTime']]
+    last_end = sorted(end_times)[-1] if end_times else None
 
     output = {
         'success': True,
         'message': '排仓计算完成（一体化演示数据）',
         'final_mode': '正常模式',
-        'final_end_date': final_end,
+        'final_end_date': last_end,
         'used_compression': False,
         'visualization_data': visualization_data,
         'debug_info': {
